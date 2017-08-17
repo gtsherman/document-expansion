@@ -4,7 +4,6 @@ import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
@@ -16,8 +15,8 @@ import com.google.common.collect.Streams;
 
 import edu.gslis.docscoring.support.CollectionStats;
 import edu.gslis.docscoring.support.IndexBackedCollectionStats;
+import edu.gslis.indexes.CachedFeatureVectorIndexWrapperIndriImpl;
 import edu.gslis.indexes.IndexWrapper;
-import edu.gslis.indexes.IndexWrapperIndriImpl;
 import edu.gslis.output.FormattedOutputTrecEval;
 import edu.gslis.queries.GQueries;
 import edu.gslis.queries.GQueriesFactory;
@@ -40,8 +39,8 @@ public class RunExpandedRetrieval {
 		int numTerms = Integer.parseInt(args[3]);
 		
 		// Load resources
-		IndexWrapper targetIndex = new IndexWrapperIndriImpl(config.getString("target-index"));
-		IndexWrapper expansionIndex = new IndexWrapperIndriImpl(config.getString("expansion-index"));
+		IndexWrapper targetIndex = new CachedFeatureVectorIndexWrapperIndriImpl(config.getString("target-index"));
+		IndexWrapper expansionIndex = new CachedFeatureVectorIndexWrapperIndriImpl(config.getString("expansion-index"));
 		Stopper stopper = new Stopper(config.getString("stoplist"));
 		GQueries queries = GQueriesFactory.getGQueries(config.getString("queries"));
 		CollectionStats targetCollectionStats = new IndexBackedCollectionStats();
@@ -62,15 +61,11 @@ public class RunExpandedRetrieval {
 
 			query.applyStopper(stopper);
 			
-			AtomicInteger docs = new AtomicInteger(0);
-			
-			SearchHits results = targetIndex.runQuery(query, 100);
+			SearchHits results = targetIndex.runQuery(query, 1000);
 			Streams.stream(results).parallel().forEach(doc -> {
-				System.err.print("...Scoring doc " + docs.incrementAndGet() + "\r");
 				double expandedScore = queryScorer.scoreQuery(query, doc);
 				doc.setScore(expandedScore);
 			});
-			System.err.println();
 			
 			results.rank();
 			out.write(results, query.getTitle());
