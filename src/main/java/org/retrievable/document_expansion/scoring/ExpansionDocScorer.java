@@ -20,14 +20,14 @@ public class ExpansionDocScorer implements DocScorer {
 	
 	DocumentExpander docExpander;
 
-	DocScorer dirichletScorer;
+	DocScorer expScorer;
 	
 	private LoadingCache<SearchHit, SearchHits> expansionDocs = CacheBuilder.newBuilder()
 			.softValues()
 			.build(
 					new CacheLoader<SearchHit, SearchHits>() {
 						public SearchHits load(SearchHit document) throws Exception {
-							return getExpansionDocs(document);
+							return docExpander.expandDocument(document).getExpansionDocuments();
 						}
 					});	
 	
@@ -41,23 +41,16 @@ public class ExpansionDocScorer implements DocScorer {
 		IndexBackedCollectionStats collectionStats = new IndexBackedCollectionStats();
 		collectionStats.setStatSource(docExpander.getIndex());
 
-		this.dirichletScorer = new CachedDocScorer(new DirichletDocScorer(mu, collectionStats));
+		DocScorer dirichletScorer = new CachedDocScorer(new DirichletDocScorer(mu, collectionStats));
+		expScorer = new DocScorerWithDoNothingPrior(dirichletScorer);
 	}
 	
 	@Override
 	public double scoreTerm(String term, SearchHit document) {
-		SearchHits expansionDocs;
-		try {
-			expansionDocs = this.expansionDocs.get(document);
-		} catch (ExecutionException e) {
-			System.err.println("Error getting expansion documents for " + document.getDocno());
-			e.printStackTrace(System.err);
-			expansionDocs = new SearchHits();
-		}
-		
+		SearchHits expansionDocs = getExpansionDocs(document);
+
 		double total = Streams.stream(expansionDocs)
 				.mapToDouble(doc -> {
-					DocScorer expScorer = new DocScorerWithDoNothingPrior(dirichletScorer);
 					return expScorer.scoreTerm(term, doc);
 				}).sum();
 		
@@ -65,7 +58,13 @@ public class ExpansionDocScorer implements DocScorer {
 	}
 	
 	public SearchHits getExpansionDocs(SearchHit document) {
-		return docExpander.expandDocument(document).getExpansionDocuments();
+		try {
+			return expansionDocs.get(document);
+		} catch (ExecutionException e) {
+			System.err.println("Error getting expansion documents for " + document.getDocno());
+			e.printStackTrace(System.err);
+			return new SearchHits();
+		}
 	}
 
 }
