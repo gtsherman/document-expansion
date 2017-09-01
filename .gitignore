@@ -1,5 +1,10 @@
+# IDE stuff
 .classpath
 .project
 .settings/
 target/
+.idea/
+
+# Files
 compileAndUpload.sh
+*.pyc
