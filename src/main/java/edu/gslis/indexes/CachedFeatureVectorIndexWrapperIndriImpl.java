@@ -6,7 +6,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
-import edu.gslis.queries.GQuery;
 import edu.gslis.textrepresentation.FeatureVector;
 import edu.gslis.textrepresentation.IndriDocument;
 import edu.gslis.utils.Stopper;
@@ -15,7 +14,7 @@ import lemurproject.indri.QueryEnvironment;
 public class CachedFeatureVectorIndexWrapperIndriImpl extends IndexWrapperIndriImpl {
 	
 	private LoadingCache<Integer, FeatureVector> featureVectors = CacheBuilder.newBuilder()
-			.softValues()
+			.maximumSize(10000)
 			.build(
 					new CacheLoader<Integer, FeatureVector>() {
 						public FeatureVector load(Integer docId) throws Exception {
@@ -35,10 +34,12 @@ public class CachedFeatureVectorIndexWrapperIndriImpl extends IndexWrapperIndriI
 			System.err.println("Error getting feature vector from cache. Getting from index.");
 			vector = getDocVectorFromIndex(docID, null);
 		}
-		GQuery temp = new GQuery();
-		temp.setFeatureVector(vector);
-		temp.applyStopper(stopper);
-		return temp.getFeatureVector();
+		
+		if (stopper != null) {
+			vector.applyStopper(stopper);
+		}
+		
+		return vector;
 	}
 
 	public FeatureVector getDocVector(String docno, Stopper stopper) {
