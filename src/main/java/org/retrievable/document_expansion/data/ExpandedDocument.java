@@ -37,6 +37,11 @@ public class ExpandedDocument {
 		return expansionDocuments;
 	}
 	
+	/**
+	 * Compute the language model of the expansion documents
+	 * @param expansionIndex The index used for expansion
+	 * @return A FeatureVector with term probabilities based on <i>only</i> the expansion documents
+	 */
 	public FeatureVector expansionLanguageModel(IndexWrapper expansionIndex) {
 		if (expansionLM == null) {
 			// Add all of the FeatureVectors into an array so we can create a vocabulary
@@ -65,6 +70,11 @@ public class ExpandedDocument {
 		return expansionLM;
 	}
 	
+	/**
+	 * Compute the language model of the original document, i.e. the document LM pre-expansion
+	 * @param targetIndex The index containing the original document
+	 * @return A FeatureVector with term probabilities based on <i>only</i> the original document
+	 */
 	public FeatureVector originalLanguageModel(IndexWrapper targetIndex) {
 		if (originalLM == null) {
 			IndexBackedCollectionStats collectionStats = new IndexBackedCollectionStats();
@@ -79,10 +89,23 @@ public class ExpandedDocument {
 		return originalLM;
 	}
 	
+	/**
+	 * See {@link #languageModel(IndexWrapper, IndexWrapper, double) languageModel}; use when the original and expansion documents come from the same index
+	 * @param index The index of both the original and expansion documents
+	 * @param originalLMWeight The weight of the original document language model; the expansion LM will be weighted 1-originalLMWeight
+	 * @return A FeatureVector containing term probabilities of the expanded language model
+	 */
 	public FeatureVector languageModel(IndexWrapper index, double originalLMWeight) {
 		return languageModel(index, index, originalLMWeight);
 	}
 	
+	/**
+	 * The expanded language model based on the combined original and expansion language models
+	 * @param targetIndex The index containing the original document
+	 * @param expansionIndex The index containing the expansion documents
+	 * @param originalLMWeight The weight to give the original document language model; the expansion LM will be weighted 1-originalLMWeight
+	 * @return A FeatureVector containing term probabilities of the expanded language model
+	 */
 	public FeatureVector languageModel(IndexWrapper targetIndex, IndexWrapper expansionIndex, double originalLMWeight) {
 		FeatureVector origLM = originalLanguageModel(targetIndex);
 		FeatureVector expansionLM = expansionLanguageModel(expansionIndex);
@@ -90,7 +113,7 @@ public class ExpandedDocument {
 		Set<String> vocabulary = FeatureUtils.createVocabulary(origLM, expansionLM);
 
 		FeatureVector lm = new FeatureVector(null);
-		vocabulary.stream().parallel().forEach(term -> {
+		vocabulary.stream().forEach(term -> {
 			lm.addTerm(term, originalLMWeight * origLM.getFeatureWeight(term) + (1 - originalLMWeight) * expansionLM.getFeatureWeight(term));
 		});
 		return lm;

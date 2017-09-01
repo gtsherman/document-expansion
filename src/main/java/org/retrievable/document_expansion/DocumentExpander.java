@@ -14,7 +14,6 @@ import edu.gslis.indexes.IndexWrapper;
 import edu.gslis.queries.GQuery;
 import edu.gslis.searchhits.SearchHit;
 import edu.gslis.searchhits.SearchHits;
-import edu.gslis.textrepresentation.FeatureVector;
 import edu.gslis.utils.Stopper;
 
 public class DocumentExpander {
@@ -102,7 +101,9 @@ public class DocumentExpander {
 		// Find expansion docs
 		SearchHits expansionDocs = index.runQuery(pseudoQuery, numDocs);
 		if (stopper != null) {
-			applyStopper(expansionDocs);
+			Streams.stream(expansionDocs).forEach(doc -> {
+				doc.getFeatureVector().applyStopper(stopper);
+			});
 		}
 		normalizeScores(expansionDocs);
 		
@@ -132,17 +133,4 @@ public class DocumentExpander {
 		}
 	}
 	
-	private void applyStopper(SearchHits documents) {
-		Streams.stream(documents).forEach(doc -> {
-			FeatureVector unstopped = doc.getFeatureVector();
-			
-			// Because for some reason only GQuery can apply stopping to FeatureVectors
-			GQuery pointless = new GQuery();
-			pointless.setFeatureVector(unstopped);
-			pointless.applyStopper(stopper);
-
-			doc.setFeatureVector(pointless.getFeatureVector());
-		});
-	}
-
 }

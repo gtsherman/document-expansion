@@ -25,6 +25,7 @@ import edu.gslis.scoring.DocScorer;
 import edu.gslis.scoring.InterpolatedDocScorer;
 import edu.gslis.scoring.queryscoring.QueryLikelihoodQueryScorer;
 import edu.gslis.scoring.queryscoring.QueryScorer;
+import edu.gslis.searchhits.SearchHit;
 import edu.gslis.searchhits.SearchHits;
 import edu.gslis.utils.Stopper;
 
@@ -50,7 +51,7 @@ public class RunExpandedRetrieval {
 		DocumentExpander docExpander = new DocumentExpander(expansionIndex, numTerms, numDocs, stopper);
 		Map<DocScorer, Double> scorers = new HashMap<DocScorer, Double>();
 		scorers.put(new DirichletDocScorer(targetCollectionStats), origWeight);
-		scorers.put(new ExpansionDocScorer(docExpander), 1-origWeight);
+		scorers.put(new ExpansionDocScorer(2500, docExpander), 1-origWeight);
 		DocScorer interpolatedScorer = new InterpolatedDocScorer(scorers);
 		QueryScorer queryScorer = new QueryLikelihoodQueryScorer(interpolatedScorer);
 		
@@ -62,10 +63,11 @@ public class RunExpandedRetrieval {
 			query.applyStopper(stopper);
 			
 			SearchHits results = targetIndex.runQuery(query, 1000);
-			Streams.stream(results).parallel().forEach(doc -> {
+			for (int i = 0; i < Math.min(results.size(), 100); i++) {
+				SearchHit doc = results.getHit(i);
 				double expandedScore = queryScorer.scoreQuery(query, doc);
 				doc.setScore(expandedScore);
-			});
+			}
 			
 			results.rank();
 			out.write(results, query.getTitle());
