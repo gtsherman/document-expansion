@@ -12,7 +12,6 @@ import org.retrievable.document_expansion.features.LMFeatures;
 
 import com.google.common.collect.Streams;
 
-import cc.mallet.util.Maths;
 import edu.gslis.indexes.IndexWrapper;
 import edu.gslis.indexes.IndexWrapperIndriImpl;
 import edu.gslis.queries.GQuery;
@@ -51,9 +50,7 @@ public class CompareOriginalAndExpandedLMs {
 			doc.setFeatureVector(p.getFeatureVector());
 
 			ExpandedDocument expanded = docExpander.expandDocument(doc);
-			double kl = LMFeatures.compareLanguageModels(expanded.originalLanguageModel(targetIndex),
-					expanded.expansionLanguageModel(expansionIndex),
-					Maths::klDivergence);
+			double kl = LMFeatures.languageModelsKL(expanded.originalLanguageModel(targetIndex), expanded.expansionLanguageModel(expansionIndex));
 			klDivergences.put(doc.getDocno(), kl);
 		});
 		

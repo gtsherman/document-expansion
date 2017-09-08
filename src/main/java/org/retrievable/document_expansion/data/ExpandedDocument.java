@@ -1,6 +1,6 @@
 package org.retrievable.document_expansion.data;
 
-import java.util.Set;
+import java.util.List;
 
 import org.retrievable.document_expansion.DocumentExpander;
 import org.retrievable.document_expansion.features.FeatureUtils;
@@ -49,7 +49,7 @@ public class ExpandedDocument {
 			for (int i = 0; i < vectors.length; i++) {
 				vectors[i] = expansionDocuments.getHit(i).getFeatureVector();
 			}
-			Set<String> vocabulary = FeatureUtils.createVocabulary(vectors);
+			List<String> vocabulary = FeatureUtils.createVocabulary(vectors);
 			
 			// Create a scorer that uses the expansion documents' existing scores as P(E|D)
 			// This seems like a bad way to do things...
@@ -110,7 +110,7 @@ public class ExpandedDocument {
 		FeatureVector origLM = originalLanguageModel(targetIndex);
 		FeatureVector expansionLM = expansionLanguageModel(expansionIndex);
 		
-		Set<String> vocabulary = FeatureUtils.createVocabulary(origLM, expansionLM);
+		List<String> vocabulary = FeatureUtils.createVocabulary(origLM, expansionLM);
 
 		FeatureVector lm = new FeatureVector(null);
 		vocabulary.stream().forEach(term -> {

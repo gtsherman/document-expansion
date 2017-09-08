@@ -117,6 +117,8 @@ public class DocumentExpander {
 			docPseudoQuery.applyStopper(stopper);
 		}
 		docPseudoQuery.getFeatureVector().clip(numTerms);
+		docPseudoQuery.getFeatureVector().normalize();
+		
 		return docPseudoQuery;
 	}
 	
