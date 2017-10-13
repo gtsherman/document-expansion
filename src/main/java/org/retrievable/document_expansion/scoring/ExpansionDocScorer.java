@@ -41,7 +41,7 @@ public class ExpansionDocScorer implements DocScorer {
 		IndexBackedCollectionStats collectionStats = new IndexBackedCollectionStats();
 		collectionStats.setStatSource(docExpander.getIndex());
 
-		DocScorer dirichletScorer = new CachedDocScorer(new DirichletDocScorer(mu, collectionStats));
+		DocScorer dirichletScorer = new DirichletDocScorer(mu, collectionStats);
 		expScorer = new DocScorerWithDoNothingPrior(dirichletScorer);
 	}
 	
@@ -51,6 +51,7 @@ public class ExpansionDocScorer implements DocScorer {
 
 		double total = Streams.stream(expansionDocs)
 				.mapToDouble(doc -> {
+					System.err.println("Scoring " + term + " in " + doc.getDocno());
 					return expScorer.scoreTerm(term, doc);
 				}).sum();
 		

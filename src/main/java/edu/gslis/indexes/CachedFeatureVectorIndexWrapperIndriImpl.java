@@ -26,6 +26,10 @@ public class CachedFeatureVectorIndexWrapperIndriImpl extends IndexWrapperIndriI
 		super(pathToIndex);
 	}
 	
+	public CachedFeatureVectorIndexWrapperIndriImpl(String pathToIndex, Stopper stopper) {
+		super(pathToIndex, stopper);
+	}
+	
 	public FeatureVector getDocVector(int docID, Stopper stopper) {
 		FeatureVector vector;
 		try {

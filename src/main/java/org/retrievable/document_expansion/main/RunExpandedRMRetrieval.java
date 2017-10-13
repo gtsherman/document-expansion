@@ -53,7 +53,6 @@ public class RunExpandedRMRetrieval {
 		FormattedOutputTrecEval out = FormattedOutputTrecEval.getInstance("expanded", new BufferedWriter(new OutputStreamWriter(System.out)));
 
 		Streams.stream(queries).forEach(query -> {
-	//		GQuery query = queries.getNamedQuery(args[7]);
 			query.applyStopper(stopper);
 			
 			// For now, we only need fbDocs number of documents because we are just building our RM 

@@ -12,6 +12,7 @@ public class DocScorerWithDoNothingPrior extends DocScorerWithDocumentPrior {
 
 	@Override
 	public double getPrior(SearchHit document) {
+		System.err.println("Prior score of document (" + document.getDocno() + "): " + document.getScore());
 		return document.getScore();
 	}
 

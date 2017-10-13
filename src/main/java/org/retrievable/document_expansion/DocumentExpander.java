@@ -96,15 +96,16 @@ public class DocumentExpander {
 	}
 	
 	public ExpandedDocument expandDocumentByRetrieval(SearchHit document) {
+		System.err.println("Expanding " + document.getDocno());
 		GQuery pseudoQuery = createDocumentPseudoQuery(document);
 
 		// Find expansion docs
 		SearchHits expansionDocs = index.runQuery(pseudoQuery, numDocs);
-		if (stopper != null) {
+		/*if (stopper != null) {
 			Streams.stream(expansionDocs).forEach(doc -> {
 				doc.getFeatureVector().applyStopper(stopper);
 			});
-		}
+		}*/
 		normalizeScores(expansionDocs);
 		
 		return new ExpandedDocument(document, expansionDocs);
@@ -117,22 +118,35 @@ public class DocumentExpander {
 			docPseudoQuery.applyStopper(stopper);
 		}
 		docPseudoQuery.getFeatureVector().clip(numTerms);
-		docPseudoQuery.getFeatureVector().normalize();
 		
+		//System.err.println(docPseudoQuery.getFeatureVector().toString());
 		return docPseudoQuery;
 	}
 	
-	private void normalizeScores(SearchHits expansionDocs) {
+	protected void normalizeScores(SearchHits expansionDocs) {
 		// Get the total
 		double total = 0.0;
 		for (SearchHit doc : expansionDocs) {
 			total += doc.getScore();
 		}
+		System.err.println("Total score for expansion docs: " + total);
 		
 		// Normalize the scores
 		for (SearchHit doc : expansionDocs) {
 			doc.setScore(doc.getScore() / total);
 		}
+
+		/*
+		double k = expansionDocs.getHit(0).getScore();
+		double sum = 0;
+		for (SearchHit doc : expansionDocs) {
+			double newscore = Math.exp(doc.getScore() - k);
+			doc.setScore(newscore);
+			sum += newscore;
+		}
+		for (SearchHit doc : expansionDocs) {
+			doc.setScore(doc.getScore() / sum);
+		}*/
 	}
 	
 }
