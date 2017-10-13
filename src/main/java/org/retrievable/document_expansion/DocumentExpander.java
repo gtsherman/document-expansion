@@ -96,7 +96,6 @@ public class DocumentExpander {
 	}
 	
 	public ExpandedDocument expandDocumentByRetrieval(SearchHit document) {
-		System.err.println("Expanding " + document.getDocno());
 		GQuery pseudoQuery = createDocumentPseudoQuery(document);
 
 		// Find expansion docs
@@ -119,7 +118,6 @@ public class DocumentExpander {
 		}
 		docPseudoQuery.getFeatureVector().clip(numTerms);
 		
-		//System.err.println(docPseudoQuery.getFeatureVector().toString());
 		return docPseudoQuery;
 	}
 	
@@ -129,7 +127,6 @@ public class DocumentExpander {
 		for (SearchHit doc : expansionDocs) {
 			total += doc.getScore();
 		}
-		System.err.println("Total score for expansion docs: " + total);
 		
 		// Normalize the scores
 		for (SearchHit doc : expansionDocs) {

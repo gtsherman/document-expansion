@@ -41,7 +41,7 @@ public class ExpansionDocScorer implements DocScorer {
 		IndexBackedCollectionStats collectionStats = new IndexBackedCollectionStats();
 		collectionStats.setStatSource(docExpander.getIndex());
 
-		DocScorer dirichletScorer = new DirichletDocScorer(mu, collectionStats);
+		DocScorer dirichletScorer = new CachedDocScorer(new DirichletDocScorer(mu, collectionStats));
 		expScorer = new DocScorerWithDoNothingPrior(dirichletScorer);
 	}
 	
