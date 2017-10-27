@@ -8,7 +8,6 @@ import org.retrievable.document_expansion.data.ExpandedDocument;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.Streams;
 
 import edu.gslis.indexes.IndexWrapper;
 import edu.gslis.queries.GQuery;

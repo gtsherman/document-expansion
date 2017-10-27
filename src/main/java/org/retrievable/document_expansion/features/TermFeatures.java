@@ -1,7 +1,6 @@
 package org.retrievable.document_expansion.features;
 
 import edu.gslis.docscoring.support.CollectionStats;
-import edu.gslis.textrepresentation.FeatureVector;
 
 public class TermFeatures {
 	
