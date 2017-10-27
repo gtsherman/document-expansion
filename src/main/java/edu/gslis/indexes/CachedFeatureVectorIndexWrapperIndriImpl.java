@@ -14,7 +14,7 @@ import lemurproject.indri.QueryEnvironment;
 public class CachedFeatureVectorIndexWrapperIndriImpl extends IndexWrapperIndriImpl {
 	
 	private LoadingCache<Integer, FeatureVector> featureVectors = CacheBuilder.newBuilder()
-			.maximumSize(10000)
+			.softValues()
 			.build(
 					new CacheLoader<Integer, FeatureVector>() {
 						public FeatureVector load(Integer docId) throws Exception {
