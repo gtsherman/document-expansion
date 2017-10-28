@@ -51,7 +51,6 @@ public class ExpansionDocScorer implements DocScorer {
 
 		double total = Streams.stream(expansionDocs)
 				.mapToDouble(doc -> {
-					System.err.println("Scoring " + term + " in " + doc.getDocno());
 					return expScorer.scoreTerm(term, doc);
 				}).sum();
 		
