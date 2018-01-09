@@ -9,3 +9,4 @@ analysis/env/
 # Files
 compileAndUpload.sh
 *.pyc
+.Rproj.user

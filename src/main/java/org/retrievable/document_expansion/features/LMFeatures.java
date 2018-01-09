@@ -1,5 +1,6 @@
 package org.retrievable.document_expansion.features;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.ToDoubleBiFunction;
@@ -43,7 +44,7 @@ public class LMFeatures {
 		double perplexity = Math.pow(2, crossEntropy);
 		return perplexity;
 	}
-		
+
 	/**
 	 * Use this to compute both KL and Shannon-Jensen, since they require the same steps
 	 * @param lm1

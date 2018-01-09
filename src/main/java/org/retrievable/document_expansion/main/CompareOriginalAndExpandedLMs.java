@@ -1,60 +1,93 @@
 package org.retrievable.document_expansion.main;
 
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Map;
-import java.util.Scanner;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.PropertiesConfiguration;
 import org.retrievable.document_expansion.DocumentExpander;
 import org.retrievable.document_expansion.data.ExpandedDocument;
 import org.retrievable.document_expansion.features.LMFeatures;
 
 import com.google.common.collect.Streams;
 
+import edu.gslis.docscoring.support.CollectionStats;
+import edu.gslis.docscoring.support.IndexBackedCollectionStats;
+import edu.gslis.eval.Qrels;
 import edu.gslis.indexes.IndexWrapper;
 import edu.gslis.indexes.IndexWrapperIndriImpl;
+import edu.gslis.queries.GQueries;
+import edu.gslis.queries.GQueriesFactory;
 import edu.gslis.queries.GQuery;
+import edu.gslis.scoring.expansion.RM1Builder;
+import edu.gslis.scoring.expansion.StandardRM1Builder;
 import edu.gslis.searchhits.IndexBackedSearchHit;
 import edu.gslis.searchhits.SearchHit;
 import edu.gslis.searchhits.SearchHits;
+import edu.gslis.textrepresentation.FeatureVector;
 import edu.gslis.utils.Stopper;
 
 public class CompareOriginalAndExpandedLMs {
 
-	public static void main(String[] args) throws FileNotFoundException {
-		IndexWrapper targetIndex = new IndexWrapperIndriImpl(args[0]);
-		IndexWrapper expansionIndex = new IndexWrapperIndriImpl(args[1]);
-		Stopper stopper = new Stopper(args[2]);
-		String docsFile = args[3];
+	public static void main(String[] args) throws FileNotFoundException, ConfigurationException {
+		Configuration config = new PropertiesConfiguration(args[0]);
+		IndexWrapper targetIndex = new IndexWrapperIndriImpl(config.getString("target-index"));
+		CollectionStats cs = new IndexBackedCollectionStats();
+		cs.setStatSource(config.getString("target-index"));
+		IndexWrapper expansionIndex = new IndexWrapperIndriImpl(config.getString("expansion-index"));
+		Stopper stopper = new Stopper(config.getString("stoplist"));
+		GQueries queries = GQueriesFactory.getGQueries(config.getString("queries"));
 		
 		DocumentExpander docExpander = new DocumentExpander(expansionIndex, stopper);
 		
-		SearchHits docs = new SearchHits();
-		Scanner scanner = new Scanner(new File(docsFile));
-		while (scanner.hasNextLine()) {
-			String doc = scanner.nextLine().trim();
-			SearchHit docHit = new IndexBackedSearchHit(expansionIndex);
-			docHit.setDocno(doc);
-			docs.add(docHit);
+		Qrels qrels = new Qrels(config.getString("qrels"), false, 1);
+		for (GQuery query : queries) {
+			//SearchHits docs = targetIndex.runQuery(query, 10);
+			Set<String> relDocs = qrels.getRelDocs(query.getTitle());
+			SearchHits docs = new SearchHits();
+			for (String relDoc : relDocs) {
+				SearchHit doc = new IndexBackedSearchHit(targetIndex);
+				doc.setDocno(relDoc);
+				docs.add(doc);
+			}
+
+			RM1Builder rm1Builder = new StandardRM1Builder(docs.size(), Integer.MAX_VALUE, cs);
+			
+			Streams.stream(docs).forEach(doc -> {
+				System.err.println("Working on doc " + doc.getDocno());
+				ExpandedDocument expanded = docExpander.expandDocument(doc);
+
+				FeatureVector rm1 = rm1Builder.buildRelevanceModel(query, docs, stopper);
+
+				FeatureVector origLM = expanded.originalLanguageModel(targetIndex);
+				origLM.applyStopper(stopper);
+				FeatureVector origLM2 = new FeatureVector(null);
+				origLM.forEach(term -> {
+					if (rm1.contains(term)) {
+						origLM2.addTerm(term, origLM.getFeatureWeight(term));
+					}
+				});
+
+				FeatureVector expLM = expanded.expansionLanguageModel(expansionIndex);
+				FeatureVector expLM2 = new FeatureVector(null);
+				origLM.forEach(term -> {
+					if (rm1.contains(term)) {
+						expLM2.addTerm(term, expLM.getFeatureWeight(term));
+					}
+				});
+				expLM.applyStopper(stopper);
+		
+				double origRMkl = LMFeatures.languageModelsKL(origLM2, rm1);
+				double expRMkl = LMFeatures.languageModelsKL(expLM2, rm1);
+				double origExpKL = LMFeatures.languageModelsKL(origLM2, expLM2);
+				System.out.println(query.getTitle() + "," + 
+						doc.getDocno() + "," +
+						origRMkl + "," +
+						expRMkl + "," +
+						origExpKL);
+			});
 		}
-		scanner.close();
-		
-		Map<String, Double> klDivergences = new ConcurrentHashMap<String, Double>();
-		Streams.stream(docs).parallel().forEach(doc -> {
-			System.err.println("Working on " + doc.getDocno());
-
-			GQuery p = new GQuery();
-			p.setFeatureVector(doc.getFeatureVector());
-			p.applyStopper(stopper);
-			doc.setFeatureVector(p.getFeatureVector());
-
-			ExpandedDocument expanded = docExpander.expandDocument(doc);
-			double kl = LMFeatures.languageModelsKL(expanded.originalLanguageModel(targetIndex), expanded.expansionLanguageModel(expansionIndex));
-			klDivergences.put(doc.getDocno(), kl);
-		});
-		
-		klDivergences.keySet().stream().forEach(doc -> System.out.println(doc + ": " + klDivergences.get(doc)));
 	}
 
 }

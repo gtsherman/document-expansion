@@ -122,7 +122,7 @@ public class DocumentExpander {
 	
 	protected void normalizeScores(SearchHits expansionDocs) {
 		// Get the total
-		double total = 0.0;
+		/*double total = 0.0;
 		for (SearchHit doc : expansionDocs) {
 			total += doc.getScore();
 		}
@@ -130,9 +130,9 @@ public class DocumentExpander {
 		// Normalize the scores
 		for (SearchHit doc : expansionDocs) {
 			doc.setScore(doc.getScore() / total);
-		}
+		}*/
 
-		/*
+		
 		double k = expansionDocs.getHit(0).getScore();
 		double sum = 0;
 		for (SearchHit doc : expansionDocs) {
@@ -142,7 +142,7 @@ public class DocumentExpander {
 		}
 		for (SearchHit doc : expansionDocs) {
 			doc.setScore(doc.getScore() / sum);
-		}*/
+		}
 	}
 	
 }

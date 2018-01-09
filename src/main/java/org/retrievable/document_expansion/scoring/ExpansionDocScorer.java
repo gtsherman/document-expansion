@@ -1,12 +1,7 @@
 package org.retrievable.document_expansion.scoring;
 
-import java.util.concurrent.ExecutionException;
-
 import org.retrievable.document_expansion.DocumentExpander;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Streams;
 
 import edu.gslis.docscoring.support.IndexBackedCollectionStats;
@@ -22,14 +17,14 @@ public class ExpansionDocScorer implements DocScorer {
 
 	DocScorer expScorer;
 	
-	private LoadingCache<SearchHit, SearchHits> expansionDocs = CacheBuilder.newBuilder()
+	/*private LoadingCache<SearchHit, SearchHits> expansionDocs = CacheBuilder.newBuilder()
 			.softValues()
 			.build(
 					new CacheLoader<SearchHit, SearchHits>() {
 						public SearchHits load(SearchHit document) throws Exception {
 							return docExpander.expandDocument(document).getExpansionDocuments();
 						}
-					});	
+					});	*/
 	
 	public ExpansionDocScorer(DocumentExpander docExpander) {
 		this(2500, docExpander);
@@ -58,13 +53,14 @@ public class ExpansionDocScorer implements DocScorer {
 	}
 	
 	public SearchHits getExpansionDocs(SearchHit document) {
-		try {
+		/*try {
 			return expansionDocs.get(document);
 		} catch (ExecutionException e) {
 			System.err.println("Error getting expansion documents for " + document.getDocno());
 			e.printStackTrace(System.err);
 			return new SearchHits();
-		}
+		}*/
+		return docExpander.expandDocument(document).getExpansionDocuments();
 	}
 
 }

@@ -10,10 +10,10 @@ import edu.gslis.searchhits.SearchHits;
 
 public class PreExpandedDocumentExpander extends DocumentExpander {
 	
-	private Map<String, SearchHits> preExpandedDocs;
+	private Map<Integer, SearchHits> preExpandedDocs;
 	private int numDocs;
 	
-	public PreExpandedDocumentExpander(IndexWrapper index, Map<String, SearchHits> preExpandedDocs, int numDocs) {
+	public PreExpandedDocumentExpander(IndexWrapper index, Map<Integer, SearchHits> preExpandedDocs, int numDocs) {
 		super(index);
 		this.preExpandedDocs = preExpandedDocs;
 		this.numDocs = numDocs;
@@ -21,9 +21,9 @@ public class PreExpandedDocumentExpander extends DocumentExpander {
 	
 	@Override
 	public ExpandedDocument expandDocument(SearchHit document) {
-		SearchHits expDocs = preExpandedDocs.get(document.getDocno());;
+		SearchHits expDocs = preExpandedDocs.get(document.getDocID());;
 		if (expDocs == null) {
-			System.err.println("No exp docs for " + document.getDocno());
+			System.err.println("No exp docs for " + document.getDocID());
 			return new ExpandedDocument(document, new SearchHits());
 		}
 		expDocs.crop(numDocs);
