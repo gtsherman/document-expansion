@@ -8,5 +8,6 @@ analysis/env/
 
 # Files
 compileAndUpload.sh
+*.iml
 *.pyc
 .Rproj.user
