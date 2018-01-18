@@ -109,7 +109,7 @@ public class DocumentExpander {
 		return new ExpandedDocument(document, expansionDocs);
 	}
 	
-	private GQuery createDocumentPseudoQuery(SearchHit document) {
+	public GQuery createDocumentPseudoQuery(SearchHit document) {
 		GQuery docPseudoQuery = new GQuery();
 		docPseudoQuery.setFeatureVector(document.getFeatureVector());
 		if (stopper != null) {

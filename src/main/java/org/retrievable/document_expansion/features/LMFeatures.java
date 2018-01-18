@@ -1,6 +1,5 @@
 package org.retrievable.document_expansion.features;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.ToDoubleBiFunction;
