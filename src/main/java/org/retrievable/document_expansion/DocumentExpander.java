@@ -1,51 +1,48 @@
 package org.retrievable.document_expansion;
 
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Stream;
-
-import org.retrievable.document_expansion.data.ExpandedDocument;
-
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-
 import edu.gslis.indexes.IndexWrapper;
 import edu.gslis.queries.GQuery;
 import edu.gslis.searchhits.SearchHit;
 import edu.gslis.searchhits.SearchHits;
 import edu.gslis.utils.Stopper;
+import org.retrievable.document_expansion.data.ExpandedDocument;
+
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Stream;
 
 public class DocumentExpander {
 	
 	private int numTerms;
-	private int numDocs;
+	private int maxNumTerms;
 	private Stopper stopper;
 	private IndexWrapper index;
-	
+
 	private LoadingCache<SearchHit, ExpandedDocument> expandedDocs = CacheBuilder.newBuilder()
 			.softValues()
 			.build(
 					new CacheLoader<SearchHit, ExpandedDocument>() {
-						public ExpandedDocument load(SearchHit document) throws Exception {
-							return expandDocumentByRetrieval(document);
+						public ExpandedDocument load(SearchHit document) {
+							return expandDocumentByRetrieval(document, maxNumTerms);
 						}
-					});		
+					});
 
 	public DocumentExpander(IndexWrapper index) {
 		this(index, null);
 	}
 	
 	public DocumentExpander(IndexWrapper index, Stopper stopper) {
-		this(index, 20, 10, stopper);
+		this(index, 20, stopper);
 	}
 
-	public DocumentExpander(IndexWrapper index, int numTerms, int numDocs, Stopper stopper) {
+	public DocumentExpander(IndexWrapper index, int numTerms, Stopper stopper) {
 		setNumTerms(numTerms);
-		setNumDocs(numDocs);
 		this.stopper = stopper;
 		setIndex(index);
 	}
-	
+
 	public IndexWrapper getIndex() {
 		return index;
 	}
@@ -61,18 +58,14 @@ public class DocumentExpander {
 	public void setNumTerms(int numTerms) {
 		this.numTerms = numTerms;
 	}
-	
-	public int getNumDocs() {
-		return numDocs;
-	}
-	
-	public void setNumDocs(int numDocs) {
-		this.numDocs = numDocs;
+
+	public void setMaxNumTerms(int maxNumTerms) {
+		this.maxNumTerms = maxNumTerms;
 	}
 	
 	public void addExpansionDocument(SearchHit originalDocument, SearchHit... expansionDocuments) {
 		SearchHits expansionDocs = new SearchHits();
-		Stream.of(expansionDocuments).forEach(doc -> expansionDocs.add(doc));
+		Stream.of(expansionDocuments).forEach(expansionDocs::add);
 		addExpansionDocument(originalDocument, expansionDocs);
 	}
 	
@@ -86,7 +79,7 @@ public class DocumentExpander {
 	
 	public ExpandedDocument expandDocument(SearchHit document) {
 		try {
-			return expandedDocs.get(document);
+            return expandedDocs.get(document);
 		} catch (ExecutionException e) {
 			System.err.println("Error getting expanded document " + document.getDocno() + " from the cache.");
 			e.printStackTrace(System.err);
@@ -94,21 +87,14 @@ public class DocumentExpander {
 		}
 	}
 	
-	public ExpandedDocument expandDocumentByRetrieval(SearchHit document) {
+	public ExpandedDocument expandDocumentByRetrieval(SearchHit document, int numDocs) {
 		GQuery pseudoQuery = createDocumentPseudoQuery(document);
 
-		// Find expansion docs
 		SearchHits expansionDocs = index.runQuery(pseudoQuery, numDocs);
-		/*if (stopper != null) {
-			Streams.stream(expansionDocs).forEach(doc -> {
-				doc.getFeatureVector().applyStopper(stopper);
-			});
-		}*/
-		normalizeScores(expansionDocs);
-		
+
 		return new ExpandedDocument(document, expansionDocs);
 	}
-	
+
 	public GQuery createDocumentPseudoQuery(SearchHit document) {
 		GQuery docPseudoQuery = new GQuery();
 		docPseudoQuery.setFeatureVector(document.getFeatureVector());
@@ -116,33 +102,8 @@ public class DocumentExpander {
 			docPseudoQuery.applyStopper(stopper);
 		}
 		docPseudoQuery.getFeatureVector().clip(numTerms);
-		
+
 		return docPseudoQuery;
 	}
-	
-	protected void normalizeScores(SearchHits expansionDocs) {
-		// Get the total
-		/*double total = 0.0;
-		for (SearchHit doc : expansionDocs) {
-			total += doc.getScore();
-		}
-		
-		// Normalize the scores
-		for (SearchHit doc : expansionDocs) {
-			doc.setScore(doc.getScore() / total);
-		}*/
 
-		
-		double k = expansionDocs.getHit(0).getScore();
-		double sum = 0;
-		for (SearchHit doc : expansionDocs) {
-			double newscore = Math.exp(doc.getScore() - k);
-			doc.setScore(newscore);
-			sum += newscore;
-		}
-		for (SearchHit doc : expansionDocs) {
-			doc.setScore(doc.getScore() / sum);
-		}
-	}
-	
 }

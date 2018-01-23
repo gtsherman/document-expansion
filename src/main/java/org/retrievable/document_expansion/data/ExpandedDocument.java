@@ -2,6 +2,7 @@ package org.retrievable.document_expansion.data;
 
 import java.util.List;
 
+import edu.gslis.searchhits.SearchHitUtilsKt;
 import org.retrievable.document_expansion.DocumentExpander;
 import org.retrievable.document_expansion.features.FeatureUtils;
 import org.retrievable.document_expansion.scoring.ExpansionDocScorer;
@@ -17,7 +18,7 @@ import edu.gslis.searchhits.SearchHits;
 import edu.gslis.textrepresentation.FeatureVector;
 
 public class ExpandedDocument {
-	
+
 	private SearchHit originalDocument;
 	private SearchHits expansionDocuments;
 	
@@ -33,9 +34,17 @@ public class ExpandedDocument {
 		return originalDocument;
 	}
 	
-	public SearchHits getExpansionDocuments() {
-		return expansionDocuments;
+	public SearchHits getExpansionDocuments(int limit) {
+	    SearchHits croppedDocs = new SearchHits();
+	    for (int i = 0; i < limit; i++) {
+	    	croppedDocs.add(expansionDocuments.getHit(i));
+		}
+		return croppedDocs;
 	}
+
+	public SearchHits getExpansionDocuments() {
+	    return getExpansionDocuments(expansionDocuments.size());
+    }
 	
 	/**
 	 * Compute the language model of the expansion documents

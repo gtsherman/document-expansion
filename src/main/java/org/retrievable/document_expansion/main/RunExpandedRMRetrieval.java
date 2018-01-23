@@ -48,7 +48,7 @@ public class RunExpandedRMRetrieval {
 		CollectionStats targetCollectionStats = new IndexBackedCollectionStats();
 		targetCollectionStats.setStatSource(config.getString("target-index"));
 		
-		DocumentExpander docExpander = new DocumentExpander(expansionIndex, numTerms, numDocs, stopper);
+		DocumentExpander docExpander = new DocumentExpander(expansionIndex, numTerms, stopper);
 		
 		FormattedOutputTrecEval out = FormattedOutputTrecEval.getInstance("expanded", new BufferedWriter(new OutputStreamWriter(System.out)));
 

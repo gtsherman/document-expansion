@@ -27,7 +27,6 @@ public class PreExpandedDocumentExpander extends DocumentExpander {
 			return new ExpandedDocument(document, new SearchHits());
 		}
 		expDocs.crop(numDocs);
-		normalizeScores(expDocs);
 		return new ExpandedDocument(document, expDocs);
 	}
 
