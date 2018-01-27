@@ -36,7 +36,7 @@ public class ExpandedDocument {
 	
 	public SearchHits getExpansionDocuments(int limit) {
 	    SearchHits croppedDocs = new SearchHits();
-	    for (int i = 0; i < limit; i++) {
+	    for (int i = 0; i < Math.min(limit, expansionDocuments.size()); i++) {
 	    	croppedDocs.add(expansionDocuments.getHit(i));
 		}
 		return croppedDocs;
