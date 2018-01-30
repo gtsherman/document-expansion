@@ -13,8 +13,9 @@ import edu.gslis.utils.Stopper
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.retrievable.documentExpansion.features.*
 import org.retrievable.document_expansion.DocumentExpander
-import org.retrievable.document_expansion.data.ExpandedDocument
+import org.retrievable.document_expansion.lms.LanguageModelEstimator
 import org.retrievable.document_expansion.features.LMFeatures
+import org.retrievable.document_expansion.scoring.ExpansionDocScorer
 
 
 fun main(args: Array<String>) {
@@ -32,6 +33,7 @@ fun main(args: Array<String>) {
     val expansionCollectionStats = IndexBackedCollectionStats()
     expansionCollectionStats.setStatSource(expansionIndex)
     val expander = DocumentExpander(expansionIndex, stopper)
+    val expansionScorer = ExpansionDocScorer(expander)
     val rm1Builder = StandardRM1Builder(10, 20, expansionCollectionStats)
 
     queries.forEach { query: GQuery ->
@@ -43,9 +45,8 @@ fun main(args: Array<String>) {
             document.docno = docno
 
             // Get expansion resources
-            val expandedDocument: ExpandedDocument = expander.expandDocument(document)
-            val expansionLM = expandedDocument.expansionLanguageModel(expansionIndex)
-            val originalLM = expandedDocument.originalLanguageModel(expansionIndex)
+            val expansionLM = LanguageModelEstimator.expansionLanguageModel(document, expansionScorer)
+            val originalLM = LanguageModelEstimator.languageModel(document, index)
             val rm1 = rm1Builder.buildRelevanceModel(expander.createDocumentPseudoQuery(document), results, stopper)
 
             // Compute pre-expansion features
@@ -59,7 +60,7 @@ fun main(args: Array<String>) {
             val origToRMKL = LMFeatures.languageModelsKL(originalLM, rm1)
             val origToExpPerplexity = LMFeatures.perplexity(originalLM, expansionLM)
             val origToRMPerplexity = LMFeatures.perplexity(originalLM, rm1)
-            val pairwiseShannonJensen = pairwiseSimilarity(expandedDocument.expansionDocuments)
+            val pairwiseShannonJensen = pairwiseSimilarity(expansionScorer.getExpansionDocs(document))
 
             // Print
             println(doubleArrayOf(length, diversity, initialRank.toDouble(), clarity, origToExpKL, origToRMKL, origToExpPerplexity, origToRMPerplexity, pairwiseShannonJensen).joinToString())

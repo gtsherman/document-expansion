@@ -8,24 +8,22 @@ import edu.gslis.queries.GQuery;
 import edu.gslis.searchhits.SearchHit;
 import edu.gslis.searchhits.SearchHits;
 import edu.gslis.utils.Stopper;
-import org.retrievable.document_expansion.data.ExpandedDocument;
 
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Stream;
 
 public class DocumentExpander {
 	
 	private int numTerms;
-	private int maxNumTerms;
+	private int maxNumDocs;
 	private Stopper stopper;
 	private IndexWrapper index;
 
-	private LoadingCache<SearchHit, ExpandedDocument> expandedDocs = CacheBuilder.newBuilder()
+	private LoadingCache<SearchHit, SearchHits> expandedDocs = CacheBuilder.newBuilder()
 			.softValues()
 			.build(
-					new CacheLoader<SearchHit, ExpandedDocument>() {
-						public ExpandedDocument load(SearchHit document) {
-							return expandDocumentByRetrieval(document, maxNumTerms);
+					new CacheLoader<SearchHit, SearchHits>() {
+						public SearchHits load(SearchHit document) {
+							return expandDocumentByRetrieval(document, maxNumDocs);
 						}
 					});
 
@@ -38,7 +36,7 @@ public class DocumentExpander {
 	}
 
 	public DocumentExpander(IndexWrapper index, int numTerms, Stopper stopper) {
-		setNumTerms(numTerms);
+	    this.numTerms = numTerms;
 		this.stopper = stopper;
 		setIndex(index);
 	}
@@ -50,49 +48,44 @@ public class DocumentExpander {
 	public void setIndex(IndexWrapper index) {
 		this.index = index;
 	}
-	
+
 	public int getNumTerms() {
 		return numTerms;
 	}
+
+	public void setMaxNumDocs(int maxNumDocs) {
+		this.maxNumDocs = maxNumDocs;
+	}
 	
-	public void setNumTerms(int numTerms) {
-		this.numTerms = numTerms;
+	public SearchHits expandDocument(SearchHit document) {
+	    return expandDocument(document, maxNumDocs);
 	}
 
-	public void setMaxNumTerms(int maxNumTerms) {
-		this.maxNumTerms = maxNumTerms;
-	}
-	
-	public void addExpansionDocument(SearchHit originalDocument, SearchHit... expansionDocuments) {
-		SearchHits expansionDocs = new SearchHits();
-		Stream.of(expansionDocuments).forEach(expansionDocs::add);
-		addExpansionDocument(originalDocument, expansionDocs);
-	}
-	
-	public void addExpansionDocument(SearchHit originalDocument, SearchHits expansionDocuments) {
-		addExpansionDocument(new ExpandedDocument(originalDocument, expansionDocuments));
-	}
-	
-	public void addExpansionDocument(ExpandedDocument expandedDocument) {
-		expandedDocs.put(expandedDocument.getOriginalDocument(), expandedDocument);
-	}
-	
-	public ExpandedDocument expandDocument(SearchHit document) {
+	public SearchHits expandDocument(SearchHit document, int numDocs) {
 		try {
-            return expandedDocs.get(document);
+            SearchHits expansionDocuments = expandedDocs.get(document);
+            return croppedHits(expansionDocuments, numDocs);
 		} catch (ExecutionException e) {
 			System.err.println("Error getting expanded document " + document.getDocno() + " from the cache.");
 			e.printStackTrace(System.err);
-			return new ExpandedDocument(document, new SearchHits());
+			return new SearchHits();
 		}
 	}
-	
-	public ExpandedDocument expandDocumentByRetrieval(SearchHit document, int numDocs) {
+
+	private SearchHits croppedHits(SearchHits hits, int limit) {
+		SearchHits croppedDocs = new SearchHits();
+		for (int i = 0; i < Math.min(limit, hits.size()); i++) {
+			croppedDocs.add(hits.getHit(i));
+		}
+		return croppedDocs;
+	}
+
+	public SearchHits expandDocumentByRetrieval(SearchHit document, int numDocs) {
 		GQuery pseudoQuery = createDocumentPseudoQuery(document);
 
 		SearchHits expansionDocs = index.runQuery(pseudoQuery, numDocs);
 
-		return new ExpandedDocument(document, expansionDocs);
+		return expansionDocs;
 	}
 
 	public GQuery createDocumentPseudoQuery(SearchHit document) {

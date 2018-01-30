@@ -7,7 +7,7 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.retrievable.document_expansion.DocumentExpander;
-import org.retrievable.document_expansion.data.ExpandedDocument;
+import org.retrievable.document_expansion.lms.LanguageModelEstimator;
 
 import edu.gslis.docscoring.support.CollectionStats;
 import edu.gslis.docscoring.support.IndexBackedCollectionStats;
@@ -24,6 +24,7 @@ import edu.gslis.searchhits.SearchHit;
 import edu.gslis.searchhits.SearchHits;
 import edu.gslis.textrepresentation.FeatureVector;
 import edu.gslis.utils.Stopper;
+import org.retrievable.document_expansion.scoring.ExpansionDocScorer;
 
 public class ShowOriginalAndExpandedLMs {
 
@@ -59,11 +60,9 @@ public class ShowOriginalAndExpandedLMs {
 
 			RM1Builder rm1Builder = new StandardRM1Builder(docs.size(), 20, cs);
 			for (SearchHit doc : docs) {		
-				ExpandedDocument expanded = docExpander.expandDocument(doc);
-
-				FeatureVector origLM = expanded.originalLanguageModel(targetIndex);
+				FeatureVector origLM = LanguageModelEstimator.languageModel(doc, targetIndex);
 				origLM.applyStopper(stopper);
-				FeatureVector expLM = expanded.expansionLanguageModel(expansionIndex);
+				FeatureVector expLM = LanguageModelEstimator.expansionLanguageModel(doc, new ExpansionDocScorer(docExpander));
 				expLM.applyStopper(stopper);
 			//	FeatureVector rm1 = rm1Builder.buildRelevanceModel(query, docs, stopper);
 				

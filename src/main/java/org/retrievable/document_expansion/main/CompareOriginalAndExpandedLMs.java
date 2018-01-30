@@ -7,7 +7,7 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.retrievable.document_expansion.DocumentExpander;
-import org.retrievable.document_expansion.data.ExpandedDocument;
+import org.retrievable.document_expansion.lms.LanguageModelEstimator;
 import org.retrievable.document_expansion.features.LMFeatures;
 
 import com.google.common.collect.Streams;
@@ -27,6 +27,7 @@ import edu.gslis.searchhits.SearchHit;
 import edu.gslis.searchhits.SearchHits;
 import edu.gslis.textrepresentation.FeatureVector;
 import edu.gslis.utils.Stopper;
+import org.retrievable.document_expansion.scoring.ExpansionDocScorer;
 
 public class CompareOriginalAndExpandedLMs {
 
@@ -56,11 +57,10 @@ public class CompareOriginalAndExpandedLMs {
 			
 			Streams.stream(docs).forEach(doc -> {
 				System.err.println("Working on doc " + doc.getDocno());
-				ExpandedDocument expanded = docExpander.expandDocument(doc);
 
 				FeatureVector rm1 = rm1Builder.buildRelevanceModel(query, docs, stopper);
 
-				FeatureVector origLM = expanded.originalLanguageModel(targetIndex);
+				FeatureVector origLM = LanguageModelEstimator.languageModel(doc, targetIndex);
 				origLM.applyStopper(stopper);
 				FeatureVector origLM2 = new FeatureVector(null);
 				origLM.forEach(term -> {
@@ -69,7 +69,7 @@ public class CompareOriginalAndExpandedLMs {
 					}
 				});
 
-				FeatureVector expLM = expanded.expansionLanguageModel(expansionIndex);
+				FeatureVector expLM = LanguageModelEstimator.expansionLanguageModel(doc, new ExpansionDocScorer(docExpander));
 				FeatureVector expLM2 = new FeatureVector(null);
 				origLM.forEach(term -> {
 					if (rm1.contains(term)) {

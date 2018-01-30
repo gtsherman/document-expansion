@@ -2,7 +2,7 @@ package org.retrievable.document_expansion;
 
 import java.util.Map;
 
-import org.retrievable.document_expansion.data.ExpandedDocument;
+import org.retrievable.document_expansion.lms.LanguageModelEstimator;
 
 import edu.gslis.indexes.IndexWrapper;
 import edu.gslis.searchhits.SearchHit;
@@ -20,14 +20,14 @@ public class PreExpandedDocumentExpander extends DocumentExpander {
 	}
 	
 	@Override
-	public ExpandedDocument expandDocument(SearchHit document) {
+	public SearchHits expandDocument(SearchHit document) {
 		SearchHits expDocs = preExpandedDocs.get(document.getDocID());;
 		if (expDocs == null) {
 			System.err.println("No exp docs for " + document.getDocID());
-			return new ExpandedDocument(document, new SearchHits());
+			return new SearchHits();
 		}
 		expDocs.crop(numDocs);
-		return new ExpandedDocument(document, expDocs);
+		return expDocs;
 	}
 
 }

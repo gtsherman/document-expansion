@@ -13,7 +13,7 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.retrievable.document_expansion.DocumentExpander;
 import org.retrievable.document_expansion.PreExpandedDocumentExpander;
-import org.retrievable.document_expansion.data.ExpandedDocument;
+import org.retrievable.document_expansion.lms.LanguageModelEstimator;
 
 import com.google.common.collect.Streams;
 
@@ -101,8 +101,8 @@ public class RunDELM {
 					pseudoDoc.addTerm(term, origWeight*doc.getFeatureVector().getFeatureWeight(term));
 				}
 
-				ExpandedDocument expanded = docExpander.expandDocument(doc);
-				for (SearchHit expDoc : expanded.getExpansionDocuments()) {
+				SearchHits expanded = docExpander.expandDocument(doc);
+				for (SearchHit expDoc : expanded) {
 					for (String term : expDoc.getFeatureVector()) {
 						double neighborhoodWeight = expDoc.getScore() * expDoc.getFeatureVector().getFeatureWeight(term);
 						pseudoDoc.addTerm(term, (1-origWeight)*neighborhoodWeight);

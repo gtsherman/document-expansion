@@ -58,7 +58,7 @@ public class ExpansionDocScorer implements DocScorer {
 	}
 	
 	public SearchHits getExpansionDocs(SearchHit document) {
-		return docExpander.expandDocument(document).getExpansionDocuments(numDocs);
+		return docExpander.expandDocument(document, numDocs);
 	}
 
 }
