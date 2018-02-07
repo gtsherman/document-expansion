@@ -1,6 +1,5 @@
 package org.retrievable.document_expansion.main;
 
-import com.google.common.collect.Streams;
 import edu.gslis.docscoring.support.CollectionStats;
 import edu.gslis.docscoring.support.IndexBackedCollectionStats;
 import edu.gslis.indexes.CachedFeatureVectorIndexWrapperIndriImpl;
@@ -9,7 +8,6 @@ import edu.gslis.indexes.IndexWrapperIndriImpl;
 import edu.gslis.output.FormattedOutputTrecEval;
 import edu.gslis.queries.GQueries;
 import edu.gslis.queries.GQueriesFactory;
-import edu.gslis.queries.GQueriesJsonImpl;
 import edu.gslis.queries.GQuery;
 import edu.gslis.scoring.CachedDocScorer;
 import edu.gslis.scoring.DirichletDocScorer;
@@ -23,15 +21,13 @@ import edu.gslis.utils.Stopper;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
-import org.retrievable.document_expansion.DocumentExpander;
+import org.retrievable.document_expansion.expansion.DocumentExpander;
 import org.retrievable.document_expansion.scoring.ExpansionDocScorer;
 
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * New model:
@@ -64,7 +60,7 @@ public class RunExpandedRetrieval {
         int numDocsInterval = Integer.parseInt(config.getString("docs-interval", "5"));
 
         DocumentExpander docExpander = new DocumentExpander(expansionIndex, numTerms, stopper);
-        docExpander.setMaxNumTerms(maxNumDocs);
+        docExpander.setMaxNumDocs(maxNumDocs);
 
         FormattedOutputTrecEval out = FormattedOutputTrecEval.getInstance(
                 "tmp",
@@ -88,10 +84,11 @@ public class RunExpandedRetrieval {
             expansionScorer.setNumDocs(numDocs);
             for (int origWeightInt = 0; origWeightInt <= 10; origWeightInt++) {
                 double origWeight = origWeightInt / 10.0;
+
                 scorers.put(dirichletScorer, origWeight);
                 scorers.put(expansionScorer, 1 - origWeight);
 
-                out.setRunId("origW:" + origWeight + ",fbDocs:" + numDocs + ",fbTerms:" + numTerms);
+                out.setRunId("origW:" + origWeight + ",expDocs:" + numDocs + ",expTerms:" + numTerms);
 
                 for (SearchHit doc : results) {
                     double expandedScore = queryScorer.scoreQuery(query, doc);

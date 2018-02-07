@@ -51,6 +51,10 @@ public class ExpansionDocScorer implements DocScorer {
 		return total;
 	}
 
+	public int getNumDocs() {
+		return numDocs;
+	}
+
 	public void setNumDocs(int numDocs) {
 		this.numDocs = numDocs;
 	}
