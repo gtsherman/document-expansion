@@ -6,7 +6,7 @@ import java.util.Set;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
-import org.retrievable.document_expansion.DocumentExpander;
+import org.retrievable.document_expansion.expansion.DocumentExpander;
 import org.retrievable.document_expansion.lms.LanguageModelEstimator;
 
 import edu.gslis.docscoring.support.CollectionStats;

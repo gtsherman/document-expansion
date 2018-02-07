@@ -1,4 +1,4 @@
-package org.retrievable.document_expansion;
+package org.retrievable.document_expansion.expansion;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -7,6 +7,7 @@ import edu.gslis.indexes.IndexWrapper;
 import edu.gslis.queries.GQuery;
 import edu.gslis.searchhits.SearchHit;
 import edu.gslis.searchhits.SearchHits;
+import edu.gslis.textrepresentation.FeatureVector;
 import edu.gslis.utils.Stopper;
 
 import java.util.concurrent.ExecutionException;
@@ -90,7 +91,11 @@ public class DocumentExpander {
 
 	public GQuery createDocumentPseudoQuery(SearchHit document) {
 		GQuery docPseudoQuery = new GQuery();
-		docPseudoQuery.setFeatureVector(document.getFeatureVector());
+
+		// We need to copy the document vector so we don't cause mutations with side effects when we clip it
+		FeatureVector docVector = document.getFeatureVector().deepCopy();
+		docPseudoQuery.setFeatureVector(docVector);
+
 		if (stopper != null) {
 			docPseudoQuery.applyStopper(stopper);
 		}

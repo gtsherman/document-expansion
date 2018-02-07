@@ -2,7 +2,7 @@ package org.retrievable.document_expansion;
 
 import java.util.Map;
 
-import org.retrievable.document_expansion.lms.LanguageModelEstimator;
+import org.retrievable.document_expansion.expansion.DocumentExpander;
 
 import edu.gslis.indexes.IndexWrapper;
 import edu.gslis.searchhits.SearchHit;

@@ -12,7 +12,7 @@ import edu.gslis.searchhits.SearchHit
 import edu.gslis.utils.Stopper
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.retrievable.documentExpansion.features.*
-import org.retrievable.document_expansion.DocumentExpander
+import org.retrievable.document_expansion.expansion.DocumentExpander
 import org.retrievable.document_expansion.lms.LanguageModelEstimator
 import org.retrievable.document_expansion.features.LMFeatures
 import org.retrievable.document_expansion.scoring.ExpansionDocScorer

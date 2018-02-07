@@ -18,9 +18,7 @@ import edu.gslis.utils.Stopper;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
-import org.retrievable.document_expansion.DocumentExpander;
-import org.retrievable.document_expansion.lms.LanguageModelEstimator;
-import org.retrievable.document_expansion.scoring.ExpansionDocScorer;
+import org.retrievable.document_expansion.expansion.DocumentExpander;
 
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;

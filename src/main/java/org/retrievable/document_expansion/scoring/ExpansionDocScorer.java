@@ -7,9 +7,7 @@ import edu.gslis.scoring.DirichletDocScorer;
 import edu.gslis.scoring.DocScorer;
 import edu.gslis.searchhits.SearchHit;
 import edu.gslis.searchhits.SearchHits;
-import org.retrievable.document_expansion.DocumentExpander;
-
-import java.util.concurrent.ExecutionException;
+import org.retrievable.document_expansion.expansion.DocumentExpander;
 
 public class ExpansionDocScorer implements DocScorer {
 	
