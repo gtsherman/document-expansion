@@ -58,8 +58,14 @@ public class LanguageModelEstimator {
     }
 
     public static FeatureVector languageModel(SearchHit document, CollectionStats collectionStats) {
-		FeatureVector originalLM = new FeatureVector(null);
 		DocScorer scorer = new DirichletDocScorer(collectionStats);
+
+		return languageModel(document, scorer);
+	}
+
+	public static FeatureVector languageModel(SearchHit document, DocScorer scorer) {
+		FeatureVector originalLM = new FeatureVector(null);
+
 		for (String term : document.getFeatureVector().getFeatures()) {
 			originalLM.addTerm(term, scorer.scoreTerm(term, document));
 		}
