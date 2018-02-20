@@ -6,13 +6,12 @@ import edu.gslis.indexes.IndexWrapperIndriImpl
 import edu.gslis.queries.GQueriesFactory
 import edu.gslis.queries.GQuery
 import edu.gslis.searchhits.IndexBackedSearchHit
-import edu.gslis.searchhits.SearchHit
 import edu.gslis.searchhits.readTrecOutput
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.retrievable.documentExpansion.features.documentClarity
 import org.retrievable.documentExpansion.features.documentDiversity
-import org.retrievable.documentExpansion.features.documentRank
 import org.retrievable.documentExpansion.features.documentLength
+import org.retrievable.documentExpansion.features.documentRank
 
 
 fun main(args: Array<String>) {
@@ -26,12 +25,18 @@ fun main(args: Array<String>) {
     val baselineResults = readTrecOutput(config.getString("baseline-run"))
     val expansionResults = readTrecOutput(config.getString("expansion-run"))
 
-    queries.forEach { query: GQuery ->
+    println("docno,query,relevance,initialRank,rankImprovement,length,diversity,clarity")
 
-        // For each judged document, compute:
-        qrels.getPool(query.title).forEach { docno: String ->
-            val document: SearchHit = IndexBackedSearchHit(index)
-            document.docno = docno
+    queries.forEach { query: GQuery ->
+        // Make hits a set of documents a) retrieved for baseline, b) retrieved for expansion, c) in judgment pool
+        val baselineHits = baselineResults.getSearchHits(query).hits().map { it.docno }
+        val retrievedHits = baselineHits.intersect(expansionResults.getSearchHits(query).hits().map { it.docno })
+        val judgedRetrievedHits = retrievedHits.intersect(qrels.getPool(query.title))
+
+        // For each retrieved document, compute:
+        judgedRetrievedHits.forEach { doc ->
+            val document = IndexBackedSearchHit(index)
+            document.docno = doc
 
             // Compute pre-expansion features
             val length = documentLength(document)
@@ -41,19 +46,17 @@ fun main(args: Array<String>) {
 
             // Compute rank change
             val expansionRank = documentRank(document, expansionResults.getSearchHits(query))
-            var rankChange = initialRank - expansionRank
-            if (initialRank === 0 || expansionRank === 0) {
-                rankChange = -1
-            }
+            val rankChange = initialRank - expansionRank
 
-            // Print
-            println("docno,rankChange,length,diversity,initialRank,clarity")
-            println(docno + ", " +
+            // Print data
+            println(document.docno + "," +
+                    query.title + "," +
                     doubleArrayOf(
+                            qrels.getRelLevel(query.title, document.docno).toDouble(),
+                            initialRank.toDouble(),
                             rankChange.toDouble(),
                             length,
                             diversity,
-                            initialRank.toDouble(),
                             clarity
                     ).joinToString(",")
             )
