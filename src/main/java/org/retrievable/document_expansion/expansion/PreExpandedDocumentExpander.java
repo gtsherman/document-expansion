@@ -1,4 +1,4 @@
-package org.retrievable.document_expansion;
+package org.retrievable.document_expansion.expansion;
 
 import java.util.Map;
 
