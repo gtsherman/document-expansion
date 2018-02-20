@@ -59,10 +59,18 @@ public class DocumentExpander {
 	}
 	
 	public SearchHits expandDocument(SearchHit document) {
+	    if (maxNumDocs <= 0) {
+			System.err.println("Asked to expand with " + maxNumDocs + " docs. Returning empty SearchHits.");
+			return new SearchHits();
+		}
 	    return expandDocument(document, maxNumDocs);
 	}
 
 	public SearchHits expandDocument(SearchHit document, int numDocs) {
+		if (numDocs > maxNumDocs) {
+			setMaxNumDocs(numDocs);
+		}
+
 		try {
             SearchHits expansionDocuments = expandedDocs.get(document);
             return croppedHits(expansionDocuments, numDocs);

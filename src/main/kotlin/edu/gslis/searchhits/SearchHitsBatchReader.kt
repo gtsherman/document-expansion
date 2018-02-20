@@ -23,7 +23,7 @@ fun readTrecOutput(fileName: String) : SearchHitsBatch {
         val data = line.split(' ')
 
         val query: String = data[0]
-        if (query !== currentQuery) {
+        if (query != currentQuery) {
             searchHitsBatch.setSearchHits(currentQuery, searchHits)
             searchHits = SearchHits()
             currentQuery = query
@@ -36,5 +36,6 @@ fun readTrecOutput(fileName: String) : SearchHitsBatch {
         searchHits.add(searchHit)
     }
 
+    searchHitsBatch.setSearchHits(currentQuery, searchHits)
     return searchHitsBatch
 }

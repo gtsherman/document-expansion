@@ -33,7 +33,7 @@ fun documentDiversity(document: SearchHit) : Double {
  * @return The rank of the document in the results list
  */
 fun documentRank(document: SearchHit, results: SearchHits) : Int {
-    return results.indexOf(document) + 1
+    return results.map({ it.docno }).indexOf(document.docno) + 1
 }
 
 /**
