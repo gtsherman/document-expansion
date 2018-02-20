@@ -16,6 +16,7 @@ import edu.gslis.utils.Stopper;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
+import org.retrievable.documentExpansion.utils.OptimalParameters;
 import org.retrievable.document_expansion.expansion.DocumentExpander;
 
 import java.io.BufferedWriter;
@@ -45,31 +46,8 @@ public class RunExpandedRMRetrieval {
 		CollectionStats targetCollectionStats = new IndexBackedCollectionStats();
 		targetCollectionStats.setStatSource(config.getString("target-index"));
 
-		// Ugliness that basically means read in a file that shows the optimal params determined for a non-RM3 run
-		// (i.e. optimal exp. docs and terms) and set numDocs and numTerms to those values respectively. We will take
-		// those as optimal for expansion purposes and sweep only over RM3-specific parameters.
-		int numDocs = 5;
-		int numTerms = 5;
-		double origWeight = 1.0;
 		String paramsFile = config.getString("optimal-params");
-		try {
-			Scanner scanner = new Scanner(new File(paramsFile));
-			while (scanner.hasNextLine()) {
-				String line = scanner.nextLine();
-				String[] parts = line.split(" ");
-				if (parts[0].equals(queryName)) {
-					String[] paramKeyVals = parts[1].trim().split(",");
-					origWeight = Double.parseDouble(paramKeyVals[0].split(":")[1]);
-					numDocs = Integer.parseInt(paramKeyVals[1].split(":")[1]);
-					numTerms = Integer.parseInt(paramKeyVals[2].split(":")[1]);
-					break;
-				}
-			}
-			scanner.close();
-		} catch (FileNotFoundException e) {
-			System.err.println(paramsFile + " not found");
-			System.exit(-1);
-		}
+		OptimalParameters expansionParams = new OptimalParameters(new File(paramsFile), queryName);
 
 		int minFbDocs = Integer.parseInt(config.getString("min-fbdocs", "10"));
 		int maxFbDocs = Integer.parseInt(config.getString("max-fbdocs", "50"));
@@ -79,16 +57,15 @@ public class RunExpandedRMRetrieval {
 		int maxFbTerms = Integer.parseInt(config.getString("max-fbterms", "50"));
 		int fbTermsInterval = Integer.parseInt(config.getString("fbterms-interval", "10"));
 
-		DocumentExpander docExpander = new DocumentExpander(expansionIndex, numTerms, stopper);
-		docExpander.setMaxNumDocs(numDocs);
+		DocumentExpander docExpander = new DocumentExpander(expansionIndex, expansionParams.getNumTerms(), stopper);
 
 		// Get the feedback docs
 		query.applyStopper(stopper);
 		SearchHits feedbackDocs = targetIndex.runQuery(query, maxFbDocs); // get max fbDocs; we'll trim as we go along
 
 		// Prep RM builders
-		ExpandedRM1Builder rm1Builder = new ExpandedRM1Builder(maxFbDocs, maxFbTerms, targetCollectionStats, docExpander, numDocs);
-		rm1Builder.setOriginalLMWeight(origWeight);
+		ExpandedRM1Builder rm1Builder = new ExpandedRM1Builder(maxFbDocs, maxFbTerms, targetCollectionStats, docExpander, expansionParams.getNumDocs());
+		rm1Builder.setOriginalLMWeight(expansionParams.getOrigWeight());
 		RM3Builder rm3Builder = new RM3Builder();
 
 		// Prep the RM3 query
@@ -126,9 +103,9 @@ public class RunExpandedRMRetrieval {
                         SearchHits results = targetIndex.runQuery(rm3Query, 1000);
 
                         // Write results
-                        out.setRunId("origW:" + origWeight +
-                                        ",expDocs:" + numDocs +
-                                        ",expTerms:" + numTerms +
+                        out.setRunId("origW:" + expansionParams.getOrigWeight() +
+                                        ",expDocs:" + expansionParams.getNumDocs() +
+                                        ",expTerms:" + expansionParams.getNumTerms() +
                                         ",fbOrigWeight:" + fbOrigWeight +
                                         ",fbDocs:" + fbDocs +
                                         ",fbTerms:" + fbTerms

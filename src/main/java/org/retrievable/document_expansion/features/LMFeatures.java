@@ -1,10 +1,10 @@
 package org.retrievable.document_expansion.features;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.ToDoubleBiFunction;
 
 import cc.mallet.util.Maths;
+import edu.gslis.docscoring.TextSimilarityMeasure;
 import edu.gslis.textrepresentation.FeatureVector;
 
 public class LMFeatures {
@@ -81,6 +81,10 @@ public class LMFeatures {
 			}
 		}
 		return probabilityVector;
+	}
+
+	public static double languageModelsCosine(FeatureVector lm1, FeatureVector lm2) {
+		return TextSimilarityMeasure.cosine(lm1, lm2, true);
 	}
 
 }

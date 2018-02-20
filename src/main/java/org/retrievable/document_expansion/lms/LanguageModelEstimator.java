@@ -12,25 +12,42 @@ import edu.gslis.textrepresentation.FeatureVector;
 import org.retrievable.document_expansion.features.FeatureUtils;
 import org.retrievable.document_expansion.scoring.ExpansionDocScorer;
 
-import java.util.List;
+import java.util.*;
 
 public class LanguageModelEstimator {
 
 	/**
 	 * Compute the language model of the expansion documents
-     * @param originalDocument The original document to be expanded
+	 * @param originalDocument The original document to be expanded
 	 * @param scorer An ExpansionDocScorer instance that is already configured with the correct number of expansion documents, etc.
-	 * @return A FeatureVector with term probabilities based on <i>only</i> the expansion documents
+	 * @return A FeatureVector with term probabilities based on all of the terms in <i>only</i> the expansion documents
 	 */
 	public static FeatureVector expansionLanguageModel(SearchHit originalDocument, ExpansionDocScorer scorer) {
+		return expansionLanguageModel(originalDocument, scorer, null);
+	}
+
+	/**
+	 * Compute the language model of the expansion documents
+     * @param originalDocument The original document to be expanded
+	 * @param scorer An ExpansionDocScorer instance that is already configured with the correct number of expansion documents, etc.
+     * @param includedTerms Only estimate the probabilities of the included terms. If null, will estimate the probability of all terms in the expansion documents
+	 * @return A FeatureVector with term probabilities based on <i>only</i> the expansion documents
+	 */
+	public static FeatureVector expansionLanguageModel(SearchHit originalDocument, ExpansionDocScorer scorer, Set<String> includedTerms) {
 	    SearchHits expansionDocuments = scorer.getExpansionDocs(originalDocument);
 
-		// Add all of the FeatureVectors into an array so we can create a vocabulary
-		FeatureVector[] vectors = new FeatureVector[expansionDocuments.size()];
-		for (int i = 0; i < vectors.length; i++) {
-			vectors[i] = expansionDocuments.getHit(i).getFeatureVector();
+		List<String> vocabulary;
+	    if (includedTerms != null) {
+			vocabulary = new ArrayList<>(includedTerms);
+			Collections.sort(vocabulary);
+		} else {
+	    	// Add all of the FeatureVectors into an array so we can create a vocabulary
+            FeatureVector[] vectors = new FeatureVector[expansionDocuments.size()];
+            for (int i = 0; i < vectors.length; i++) {
+                vectors[i] = expansionDocuments.getHit(i).getFeatureVector();
+            }
+            vocabulary = FeatureUtils.createVocabulary(vectors);
 		}
-		List<String> vocabulary = FeatureUtils.createVocabulary(vectors);
 
         // Create the language model
         FeatureVector expansionLM = new FeatureVector(null);
