@@ -37,8 +37,10 @@ fun main(args: Array<String>) {
     val targetRM1Builder = StandardRM1Builder(20, 20, targetCollectionStats)
     val expansionRM1Builder = StandardRM1Builder(20, 20, expansionCollectionStats)
 
-    val documentExpander = DocumentExpander(expansionIndex, 10, stopper)
+    val externalDocumentExpander = DocumentExpander(expansionIndex, 10, stopper)
+    val targetDocumentExpander = DocumentExpander(targetIndex, 10, stopper)
 
+    // Sample documents
     val relDocs = SearchHits(
             queries
                     .map { query -> qrels.getRelDocs(query.title) }
@@ -81,6 +83,7 @@ fun main(args: Array<String>) {
 
     val sampledDocs = sampledRelDocs union sampledNonRelDocs union sampledPoolDocs
 
+    // Sample terms
     sampledDocs.forEach { doc ->
         val sampledTerms = HashSet<String>()
 
@@ -88,13 +91,21 @@ fun main(args: Array<String>) {
         removeNumbers(doc.featureVector)
         sampledTerms.addAll(sampleTerms(20, doc.featureVector, stopper))
 
-        val expansionRM1 = expansionRM1Builder.buildRelevanceModel(
-                documentExpander.createDocumentPseudoQuery(doc),
-                documentExpander.expandDocument(doc, 10),
+        val externalExpansionRM1 = expansionRM1Builder.buildRelevanceModel(
+                externalDocumentExpander.createDocumentPseudoQuery(doc),
+                externalDocumentExpander.expandDocument(doc, 10),
                 stopper
         )
-        removeNumbers(expansionRM1)
-        sampledTerms.addAll(sampleTerms(20, expansionRM1, stopper, exclude = sampledTerms))
+        removeNumbers(externalExpansionRM1)
+        sampledTerms.addAll(sampleTerms(10, externalExpansionRM1, stopper, exclude = sampledTerms))
+
+        val targetExpansionRM1 = targetRM1Builder.buildRelevanceModel(
+                targetDocumentExpander.createDocumentPseudoQuery(doc),
+                targetDocumentExpander.expandDocument(doc, 10),
+                stopper
+        )
+        removeNumbers(targetExpansionRM1)
+        sampledTerms.addAll(sampleTerms(10, targetExpansionRM1, stopper, exclude = sampledTerms))
 
         // Include query terms
         val judgedQueries = queries.filter { query -> qrels.contains(query.title, doc.docno) }
@@ -105,7 +116,7 @@ fun main(args: Array<String>) {
         sampledTerms.addAll(judgedQueries.map { query -> query.featureVector.features }.fold(HashSet(), { acc, terms -> acc.addAll(terms); acc }))
 
         // Sample terms from RM1
-        val rm1Terms = queries
+        queries
                 .filter { query -> qrels.isRel(query.title, doc.docno) }
                 .map { relevantQuery ->
                     targetRM1Builder.buildRelevanceModel(relevantQuery, targetIndex.runQuery(relevantQuery, 20), stopper)
