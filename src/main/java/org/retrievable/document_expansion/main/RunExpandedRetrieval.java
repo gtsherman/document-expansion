@@ -3,7 +3,6 @@ package org.retrievable.document_expansion.main;
 import edu.gslis.docscoring.support.CollectionStats;
 import edu.gslis.docscoring.support.IndexBackedCollectionStats;
 import edu.gslis.indexes.CachedFeatureVectorIndexWrapperIndriImpl;
-import edu.gslis.indexes.IndexWrapper;
 import edu.gslis.indexes.IndexWrapperIndriImpl;
 import edu.gslis.output.FormattedOutputTrecEval;
 import edu.gslis.queries.GQueries;
@@ -46,8 +45,8 @@ public class RunExpandedRetrieval {
         // Load resources
         Stopper stopper = new Stopper(config.getString("stoplist"));
 
-        IndexWrapper targetIndex = new IndexWrapperIndriImpl(config.getString("target-index"));
-        IndexWrapper expansionIndex = new CachedFeatureVectorIndexWrapperIndriImpl(config.getString("expansion-index"));
+        IndexWrapperIndriImpl targetIndex = new IndexWrapperIndriImpl(config.getString("target-index"));
+        IndexWrapperIndriImpl expansionIndex = new CachedFeatureVectorIndexWrapperIndriImpl(config.getString("expansion-index"));
 
         GQueries queries = GQueriesFactory.getGQueries(config.getString("queries"));
         GQuery query = queries.getNamedQuery(queryName);

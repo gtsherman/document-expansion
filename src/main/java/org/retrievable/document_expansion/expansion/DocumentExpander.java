@@ -14,10 +14,10 @@ import java.util.concurrent.ExecutionException;
 
 public class DocumentExpander {
 	
-	private int numTerms;
-	private int maxNumDocs;
-	private Stopper stopper;
-	private IndexWrapper index;
+	protected int numTerms;
+	protected int maxNumDocs;
+	protected Stopper stopper;
+	protected IndexWrapper index;
 
 	private LoadingCache<SearchHit, SearchHits> expandedDocs = CacheBuilder.newBuilder()
 			.softValues()
