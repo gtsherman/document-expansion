@@ -4,10 +4,6 @@ import edu.gslis.searchhits.SearchHit
 import edu.gslis.searchhits.SearchHits
 import edu.gslis.textrepresentation.FeatureVector
 import edu.gslis.utils.Stopper
-import org.apache.lucene.analysis.snowball.SnowballFilter
-import org.apache.lucene.analysis.standard.StandardAnalyzer
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
-import org.tartarus.snowball.ext.EnglishStemmer
 import java.lang.Math.min
 import java.util.*
 import kotlin.collections.HashMap
@@ -72,17 +68,3 @@ fun sampleTerms(number: Int, termVector: FeatureVector, stopper: Stopper = Stopp
     return if (stem) stemText(selectedTerms.joinToString(" ")) else selectedTerms
 }
 
-fun stemText(text: String) : Set<String> {
-    val tokens = HashSet<String>()
-
-    val tokenStream = SnowballFilter(StandardAnalyzer().tokenStream(null, text), EnglishStemmer())
-    //val tokenStream = EnglishMinimalStemFilter(StandardAnalyzer().tokenStream(null, docVector.features.joinToString(" ")))
-    val characterRepresentation = tokenStream.addAttribute(CharTermAttribute::class.java)
-    tokenStream.reset()
-
-    while (tokenStream.incrementToken()) {
-        tokens.add(characterRepresentation.toString())
-    }
-
-    return tokens
-}
