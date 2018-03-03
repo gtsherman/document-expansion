@@ -1,25 +1,65 @@
 package org.retrievable.documentExpansion.analysis
 
 import edu.gslis.eval.Qrels
+import edu.gslis.evaluation.evaluators.MAPEvaluator
 import edu.gslis.evaluation.evaluators.SetEvaluator
 import edu.gslis.queries.GQuery
 import edu.gslis.scoring.DocScorer
 import edu.gslis.searchhits.SearchHit
 import edu.gslis.searchhits.SearchHits
 import edu.gslis.textrepresentation.FeatureVector
+import org.retrievable.documentExpansion.data.stemText
 import org.retrievable.document_expansion.expansion.DocumentExpander
+import org.retrievable.document_expansion.lms.LanguageModelEstimator
 import org.retrievable.document_expansion.scoring.ExpansionDocScorer
 
+
+private data class ScoredItem(val id: String, val score: Double)
+
+private fun pseudoHits(items: Collection<ScoredItem>) : SearchHits {
+    return SearchHits(items.map { item -> val hit = SearchHit(); hit.docno = item.id; hit.score = item.score; hit })
+}
 
 fun probabilityChange(
         topicTerms: Collection<String>,
         originalDocScorer: DocScorer,
         expansionDocScorer: ExpansionDocScorer,
         document: SearchHit) : Double {
-    val termSet = HashSet<String>(topicTerms)
+    val termSet = topicTerms.toSet()
     return termSet.map { term ->
         expansionDocScorer.scoreTerm(term, document) - originalDocScorer.scoreTerm(term, document)
     }.sum()
+}
+
+fun totalProbability(topicTerms: Collection<String>, scorer: DocScorer, document: SearchHit) : Double {
+    return topicTerms.toSet().map { scorer.scoreTerm(it, document) }.sum()
+}
+
+fun changeInAveragePrecision(topicTerms: Collection<String>,
+                             document: SearchHit,
+                             originalDocScorer: DocScorer,
+                             expansionDocScorer: ExpansionDocScorer,
+                             numTerms: Int) : Double {
+    return topicTermsAveragePrecision(topicTerms, document, expansionDocScorer, numTerms) -
+            topicTermsAveragePrecision(topicTerms, document, originalDocScorer, numTerms)
+}
+
+fun topicTermsAveragePrecision(topicTerms: Collection<String>, document: SearchHit, scorer: DocScorer, numTerms: Int) : Double {
+    // Estimate original LM
+    val lm = if (scorer is ExpansionDocScorer) {
+        LanguageModelEstimator.expansionLanguageModel(document, scorer)
+    } else {
+        LanguageModelEstimator.languageModel(document, scorer)
+    }
+    lm.clip(numTerms)
+
+    // Create pseudo-qrels with topic terms as relevant
+    val qrels = Qrels()
+    topicTerms.forEach { term -> qrels.addQrel(document.docno, term) }
+
+    val lmPseudoHits = pseudoHits(lm.features.map { ScoredItem(it, lm.getFeatureWeight(it)) })
+
+    return MAPEvaluator().averagePrecision(document.docno, lmPseudoHits, qrels)
 }
 
 fun pseudoQueryTermRecall(topicTerms: Collection<String>, document: SearchHit, documentExpander: DocumentExpander) : Double {
@@ -31,19 +71,19 @@ fun pseudoQueryTermRecall(topicTerms: Collection<String>, document: SearchHit, d
     val pseudoQuery = documentExpander.createDocumentPseudoQuery(document)
 
     // Use fake SearchHits representing the terms
-    val termHits = pseudoQuery.featureVector.features.map { term ->
-        val hit = SearchHit()
-        hit.docno = term
-        hit.score = pseudoQuery.featureVector.getFeatureWeight(term)
-        hit
-    }
-    val searchHits = SearchHits(termHits)
+    val termHits = pseudoHits(pseudoQuery.featureVector.features.map { ScoredItem(it, pseudoQuery.featureVector.getFeatureWeight(it)) })
 
-    return SetEvaluator().recall(document.docno, searchHits, qrels)
+    return SetEvaluator().recall(document.docno, termHits, qrels)
 }
 
-fun pseudoQueryVsTopicTerms(topicTerms: Collection<String>, document: SearchHit, documentExpander: DocumentExpander, numDocs: Int) : Double {
-    val termSet = HashSet<String>(topicTerms)
+fun pseudoQueryTermJaccard(topicTerms: Collection<String>, document: SearchHit, documentExpander: DocumentExpander) : Double {
+    // Get document pseudo-query
+    val pseudoQuery = documentExpander.createDocumentPseudoQuery(document)
+    return SetEvaluator().jaccardSimilarity(topicTerms.toSet(), pseudoQuery.featureVector.features)
+}
+
+fun pseudoQueryVsTopicTermsResultsRecall(topicTerms: Collection<String>, document: SearchHit, documentExpander: DocumentExpander, numDocs: Int) : Double {
+    val termSet = topicTerms.toSet()
 
     // Convert topic terms to query
     val topicTermsQuery = GQuery()
@@ -60,4 +100,29 @@ fun pseudoQueryVsTopicTerms(topicTerms: Collection<String>, document: SearchHit,
     pseudoQueryResults.forEach { result -> qrels.addQrel(document.docno, result.docno) }
 
     return SetEvaluator().recall(document.docno, topicTermsResults, qrels)
+}
+
+fun pseudoQueryVsTopicTermsResultsJaccard(topicTerms: Collection<String>, document: SearchHit, documentExpander: DocumentExpander, numDocs: Int) : Double {
+    val termSet = topicTerms.toSet()
+
+    // Convert topic terms to query
+    val topicTermsQuery = GQuery()
+    topicTermsQuery.title = "topicTerms"
+    topicTermsQuery.featureVector = FeatureVector(null)
+    termSet.forEach { term -> topicTermsQuery.featureVector.addTerm(term) }
+
+    // Get results lists
+    val topicTermsResults = documentExpander.index.runQuery(topicTermsQuery, numDocs)
+    val pseudoQueryResults = documentExpander.expandDocument(document, numDocs)
+
+    return SetEvaluator().jaccardSimilarity(
+            topicTermsResults.hits().map { it.docno }.toSet(),
+            pseudoQueryResults.hits().map { it.docno }.toSet())
+}
+
+fun queryTopicTermSimilarity(topicTerms: Collection<String>, query: GQuery, stem: Boolean = false) : Double {
+    val topicTermSet = if (stem) stemText(topicTerms.joinToString(" ")) else HashSet(topicTerms)
+    val queryTermSet = if (stem) stemText(query.featureVector.features.joinToString(" ")) else query.featureVector.features
+
+    return SetEvaluator().jaccardSimilarity(topicTermSet, queryTermSet)
 }
