@@ -5,6 +5,7 @@ import edu.gslis.queries.GQuery;
 import edu.gslis.searchhits.SearchHit;
 import edu.gslis.searchhits.SearchHits;
 
+import java.util.HashSet;
 import java.util.Set;
 
 public class SetEvaluator {
@@ -64,4 +65,15 @@ public class SetEvaluator {
 
         return relevant / judgedRelevant;
     }
+
+    public <T> double jaccardSimilarity(Set<T> a, Set<T> b) {
+        Set<T> intersection = new HashSet<>(a);
+        intersection.retainAll(b);
+
+        Set<T> union = new HashSet<>(a);
+        union.addAll(b);
+
+        return intersection.size() / (double) union.size();
+    }
+
 }
