@@ -8,6 +8,7 @@ import edu.gslis.scoring.DocScorer
 import edu.gslis.searchhits.SearchHit
 import edu.gslis.searchhits.SearchHits
 import edu.gslis.textrepresentation.FeatureVector
+import edu.gslis.utils.Stopper
 import org.retrievable.documentExpansion.data.stemText
 import org.retrievable.document_expansion.expansion.DocumentExpander
 import org.retrievable.document_expansion.lms.LanguageModelEstimator
@@ -25,8 +26,7 @@ fun probabilityChange(
         originalDocScorer: DocScorer,
         expansionDocScorer: ExpansionDocScorer,
         document: SearchHit) : Double {
-    val termSet = topicTerms.toSet()
-    return termSet.map { term ->
+    return topicTerms.toSet().map { term ->
         expansionDocScorer.scoreTerm(term, document) - originalDocScorer.scoreTerm(term, document)
     }.sum()
 }
@@ -44,13 +44,14 @@ fun changeInAveragePrecision(topicTerms: Collection<String>,
             topicTermsAveragePrecision(topicTerms, document, originalDocScorer, numTerms)
 }
 
-fun topicTermsAveragePrecision(topicTerms: Collection<String>, document: SearchHit, scorer: DocScorer, numTerms: Int) : Double {
+fun topicTermsAveragePrecision(topicTerms: Collection<String>, document: SearchHit, scorer: DocScorer, numTerms: Int, stopper: Stopper = Stopper()) : Double {
     // Estimate original LM
     val lm = if (scorer is ExpansionDocScorer) {
         LanguageModelEstimator.expansionLanguageModel(document, scorer)
     } else {
         LanguageModelEstimator.languageModel(document, scorer)
     }
+    lm.applyStopper(stopper)
     lm.clip(numTerms)
 
     // Create pseudo-qrels with topic terms as relevant
@@ -120,9 +121,12 @@ fun pseudoQueryVsTopicTermsResultsJaccard(topicTerms: Collection<String>, docume
             pseudoQueryResults.hits().map { it.docno }.toSet())
 }
 
-fun queryTopicTermSimilarity(topicTerms: Collection<String>, query: GQuery, stem: Boolean = false) : Double {
-    val topicTermSet = if (stem) stemText(topicTerms.joinToString(" ")) else HashSet(topicTerms)
-    val queryTermSet = if (stem) stemText(query.featureVector.features.joinToString(" ")) else query.featureVector.features
+fun queryTopicTermSimilarity(topicTerms: Collection<String>, query: GQuery, stopper: Stopper = Stopper(), stem: Boolean = false) : Double {
+    val queryVector = query.featureVector.deepCopy()
+    queryVector.applyStopper(stopper)
+
+    val topicTermSet = if (stem) stemText(topicTerms.toSet()) else topicTerms.toSet()
+    val queryTermSet = if (stem) stemText(queryVector.features) else queryVector.features
 
     return SetEvaluator().jaccardSimilarity(topicTermSet, queryTermSet)
 }

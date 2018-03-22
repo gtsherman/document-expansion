@@ -14,6 +14,7 @@ import org.apache.commons.lang.StringUtils
 import org.retrievable.documentExpansion.data.sampleDocuments
 import org.retrievable.documentExpansion.data.sampleTerms
 import org.retrievable.document_expansion.expansion.DocumentExpander
+import java.io.File
 
 
 fun main(args: Array<String>) {
@@ -28,6 +29,8 @@ fun main(args: Array<String>) {
     val qrels = Qrels(config.getString("qrels"), true, 1)
     val sampleSize = Integer.parseInt(config.getString("sample-size", "500"))
 
+    val docs = File(args[1]).readLines().map { val data = it.split(','); Pair(data[0], data[1]) }.drop(1).toSet()
+
     // Dependent resources
     val targetCollectionStats = IndexBackedCollectionStats()
     targetCollectionStats.setStatSource(targetIndex)
@@ -41,7 +44,7 @@ fun main(args: Array<String>) {
     val targetDocumentExpander = DocumentExpander(targetIndex, 10, stopper)
 
     // Sample documents
-    val relDocs = SearchHits(
+    /*val relDocs = SearchHits(
             queries
                     .map { query -> qrels.getRelDocs(query.title) }
                     .reduce { collected, thisQueryDocs -> collected union thisQueryDocs }
@@ -81,8 +84,9 @@ fun main(args: Array<String>) {
     val sampledNonRelDocs = sampleDocuments(numberOfEachJudged, nonRelDocs)
     val sampledPoolDocs = sampleDocuments(numberOfPool, anyDocs)
 
-    val sampledDocs = sampledRelDocs union sampledNonRelDocs union sampledPoolDocs
+    val sampledDocs = sampledRelDocs union sampledNonRelDocs union sampledPoolDocs*/
 
+    val sampledDocs = docs.map { val d = IndexBackedSearchHit(targetIndex); d.docno = it.second; d }
     // Sample terms
     sampledDocs.forEach { doc ->
         val sampledTerms = HashSet<String>()
