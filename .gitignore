@@ -3,7 +3,7 @@
 .project
 .settings/
 target/
-analysis/env/
+analysis/
 .idea/
 
 # Files
