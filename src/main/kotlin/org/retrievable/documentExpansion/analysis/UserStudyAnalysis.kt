@@ -35,16 +35,7 @@ fun totalProbability(topicTerms: Collection<String>, scorer: DocScorer, document
     return topicTerms.toSet().map { scorer.scoreTerm(it, document) }.sum()
 }
 
-fun changeInAveragePrecision(topicTerms: Collection<String>,
-                             document: SearchHit,
-                             originalDocScorer: DocScorer,
-                             expansionDocScorer: ExpansionDocScorer,
-                             numTerms: Int) : Double {
-    return topicTermsAveragePrecision(topicTerms, document, expansionDocScorer, numTerms) -
-            topicTermsAveragePrecision(topicTerms, document, originalDocScorer, numTerms)
-}
-
-fun topicTermsAveragePrecision(topicTerms: Collection<String>, document: SearchHit, scorer: DocScorer, numTerms: Int, stopper: Stopper = Stopper()) : Double {
+fun topicTermsAveragePrecision(topicTerms: Collection<String>, document: SearchHit, scorer: DocScorer, stopper: Stopper = Stopper()) : Double {
     // Estimate original LM
     val lm = if (scorer is ExpansionDocScorer) {
         LanguageModelEstimator.expansionLanguageModel(document, scorer)
@@ -52,7 +43,6 @@ fun topicTermsAveragePrecision(topicTerms: Collection<String>, document: SearchH
         LanguageModelEstimator.languageModel(document, scorer)
     }
     lm.applyStopper(stopper)
-    lm.clip(numTerms)
 
     // Create pseudo-qrels with topic terms as relevant
     val qrels = Qrels()
@@ -63,7 +53,11 @@ fun topicTermsAveragePrecision(topicTerms: Collection<String>, document: SearchH
     return MAPEvaluator().averagePrecision(document.docno, lmPseudoHits, qrels)
 }
 
-fun pseudoQueryTermRecall(topicTerms: Collection<String>, document: SearchHit, documentExpander: DocumentExpander) : Double {
+private fun pseudoQueryTermSetEval(
+        topicTerms: Collection<String>,
+        document: SearchHit,
+        documentExpander: DocumentExpander,
+        eval: (String, SearchHits, Qrels) -> Double) : Double {
     // Set terms as relevant in pseudo-qrels
     val qrels = Qrels()
     topicTerms.forEach { term -> qrels.addQrel(document.docno, term) }
@@ -74,7 +68,15 @@ fun pseudoQueryTermRecall(topicTerms: Collection<String>, document: SearchHit, d
     // Use fake SearchHits representing the terms
     val termHits = pseudoHits(pseudoQuery.featureVector.features.map { ScoredItem(it, pseudoQuery.featureVector.getFeatureWeight(it)) })
 
-    return SetEvaluator().recall(document.docno, termHits, qrels)
+    return eval(document.docno, termHits, qrels)
+}
+
+fun pseudoQueryTermPrecision(topicTerms: Collection<String>, document: SearchHit, documentExpander: DocumentExpander) : Double {
+    return pseudoQueryTermSetEval(topicTerms, document, documentExpander, SetEvaluator()::precision)
+}
+
+fun pseudoQueryTermRecall(topicTerms: Collection<String>, document: SearchHit, documentExpander: DocumentExpander) : Double {
+    return pseudoQueryTermSetEval(topicTerms, document, documentExpander, SetEvaluator()::recall)
 }
 
 fun pseudoQueryTermJaccard(topicTerms: Collection<String>, document: SearchHit, documentExpander: DocumentExpander) : Double {

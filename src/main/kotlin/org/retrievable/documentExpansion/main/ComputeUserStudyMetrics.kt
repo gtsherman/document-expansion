@@ -149,16 +149,16 @@ fun main(args: Array<String>) {
             } catch (e: NumberIsTooSmallException) {
                 qProbTtest = -1.0
             }
-            val topicTermsAPTarget = topicTermsAveragePrecision(topicTerms, document, switch.scorer(collection), 50, stopper)
-            val topicTermsAPExpansion = topicTermsAveragePrecision(topicTerms, document, expansionDocScorer, 50, stopper)
-            val topicTermsAPExpanded = topicTermsAveragePrecision(topicTerms, document, interpScorer, 50, stopper)
-            val qtopicTermsAPTarget = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, switch.scorer(collection), 50, stopper)
-            val qtopicTermsAPExpansion = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, expansionDocScorer, 50, stopper)
-            val qtopicTermsAPExpanded = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, interpScorer, 50, stopper)
+            val topicTermsAPTarget = topicTermsAveragePrecision(topicTerms, document, switch.scorer(collection), stopper)
+            val topicTermsAPExpansion = topicTermsAveragePrecision(topicTerms, document, expansionDocScorer, stopper)
+            val topicTermsAPExpanded = topicTermsAveragePrecision(topicTerms, document, interpScorer, stopper)
+            val qtopicTermsAPTarget = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, switch.scorer(collection), stopper)
+            val qtopicTermsAPExpansion = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, expansionDocScorer, stopper)
+            val qtopicTermsAPExpanded = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, interpScorer, stopper)
             val pseudoQueryRecall = pseudoQueryTermRecall(topicTerms, document, docExpander)
             val qpseudoQueryRecall = pseudoQueryTermRecall(relevantQuery.featureVector.features, document, docExpander)
-            val pseudoQueryVsTopicTerms = pseudoQueryVsTopicTermsResultsRecall(topicTerms, document, docExpander, 30)
-            val qpseudoQueryVsTopicTerms = pseudoQueryVsTopicTermsResultsRecall(relevantQuery.featureVector.features, document, docExpander, 30)
+            val pseudoQueryVsTopicTerms = pseudoQueryVsTopicTermsResultsRecall(topicTerms, document, docExpander, optimalParameters.numDocs)
+            val qpseudoQueryVsTopicTerms = pseudoQueryVsTopicTermsResultsRecall(relevantQuery.featureVector.features, document, docExpander, optimalParameters.numDocs)
             //val queryTopicTermSimilarity = relevantQueries.map { query -> queryTopicTermSimilarity(topicTerms, query, stopper, stem = true) }
             val queryTopicTermSimilarity = queryTopicTermSimilarity(topicTerms, relevantQuery, stopper)
             var queryTopicTermSimilarityString = queryTopicTermSimilarity
