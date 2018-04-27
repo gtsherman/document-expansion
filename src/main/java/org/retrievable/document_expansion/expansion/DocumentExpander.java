@@ -81,7 +81,7 @@ public class DocumentExpander {
 		}
 	}
 
-	private SearchHits croppedHits(SearchHits hits, int limit) {
+	protected SearchHits croppedHits(SearchHits hits, int limit) {
 		SearchHits croppedDocs = new SearchHits();
 		for (int i = 0; i < Math.min(limit, hits.size()); i++) {
 			croppedDocs.add(hits.getHit(i));

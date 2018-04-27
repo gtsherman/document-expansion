@@ -1,17 +1,37 @@
 package org.retrievable.document_expansion.expansion;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import edu.gslis.indexes.IndexWrapper;
 import edu.gslis.indexes.IndexWrapperIndriImpl;
 import edu.gslis.queries.GQuery;
 import edu.gslis.searchhits.SearchHit;
+import edu.gslis.searchhits.SearchHits;
 import edu.gslis.textrepresentation.FeatureVector;
 import edu.gslis.utils.Stopper;
+import kotlin.Pair;
 import lemurproject.indri.QueryEnvironment;
 import org.apache.commons.lang3.StringUtils;
+
+import java.util.concurrent.ExecutionException;
 
 public class QueryDependentDocumentExpander extends DocumentExpander {
 
     private GQuery query;
+    private double queryWeight;
+
+    private LoadingCache<Pair<SearchHit, Double>, SearchHits> expandedDocs = CacheBuilder.newBuilder()
+            .softValues()
+            .build(
+                    new CacheLoader<Pair<SearchHit, Double>, SearchHits>() {
+                        public SearchHits load(Pair<SearchHit, Double> documentAndQueryWeight) {
+                            SearchHit document = documentAndQueryWeight.getFirst();
+                            double queryWeight = documentAndQueryWeight.getSecond();
+                            setQueryWeight(queryWeight);
+                            return expandDocumentByRetrieval(document, maxNumDocs);
+                        }
+                    });
 
     public QueryDependentDocumentExpander(IndexWrapperIndriImpl index) {
         super(index);
@@ -33,47 +53,49 @@ public class QueryDependentDocumentExpander extends DocumentExpander {
         this.query = query;
     }
 
+    public double getQueryWeight() {
+        return queryWeight;
+    }
+
+    public void setQueryWeight(double queryWeight) {
+        this.queryWeight = queryWeight;
+    }
+
+    public SearchHits expandDocument(SearchHit document, int numDocs) {
+        if (numDocs > maxNumDocs) {
+            setMaxNumDocs(numDocs);
+        }
+
+        try {
+            SearchHits expansionDocuments = expandedDocs.get(new Pair<>(document, getQueryWeight()));
+            return croppedHits(expansionDocuments, numDocs);
+        } catch (ExecutionException e) {
+            System.err.println("Error getting expanded document " + document.getDocno() + " from the cache.");
+            e.printStackTrace(System.err);
+            return new SearchHits();
+        }
+    }
+
     @Override
     public GQuery createDocumentPseudoQuery(SearchHit document) {
-        if (query == null) {
-            System.err.println("There is no query set. Returning a frequency-based pseudo-query.");
-            return super.createDocumentPseudoQuery(document);
-        }
+        // Make a copy of query vector to prevent side effects from stopping
+        FeatureVector queryVector = query.getFeatureVector().deepCopy();
+        queryVector.applyStopper(stopper);
+        queryVector.normalize();
 
-        GQuery docPseudoQuery = new GQuery();
-        docPseudoQuery.setFeatureVector(new FeatureVector(null));
+        // Build the standard query-independent pseudo-query
+        GQuery standardPseudoQuery = super.createDocumentPseudoQuery(document);
+        standardPseudoQuery.getFeatureVector().normalize();
 
-        FeatureVector documentTerms = document.getFeatureVector().deepCopy();
-        FeatureVector queryTerms = query.getFeatureVector().deepCopy();
+        // Combine the two vectors. Probably need a more nuanced way of interpolating.
+        FeatureVector combinedPseudoQueryVector = FeatureVector.interpolate(
+                queryVector, standardPseudoQuery.getFeatureVector(), queryWeight
+        );
 
-        if (stopper != null) {
-            documentTerms.applyStopper(stopper);
-            queryTerms.applyStopper(stopper);
-        }
+        // Convert to GQuery
+        GQuery queryDependentPseudoQuery = new GQuery();
+        queryDependentPseudoQuery.setFeatureVector(combinedPseudoQueryVector);
 
-        for (String term : documentTerms.getFeatures()) {
-            String termWithQuery = StringUtils.join(queryTerms.getFeatures(), " ") + " " + term;
-            QueryEnvironment queryEnvironment = (QueryEnvironment) index.getActualIndex();
-
-            double coocurrenceDocs = 0;
-            double termDocs = index.docFreq(term);
-
-            if (termDocs == 0) { // this happens if the term appears in the target document but not the expansion index
-                continue;
-            }
-
-            try {
-                coocurrenceDocs = queryEnvironment.expressionCount("#uw( " + termWithQuery + " )");
-            } catch (Exception e) {
-                System.err.println("Error getting document expression count.");
-                e.printStackTrace(System.err);
-            }
-
-            docPseudoQuery.getFeatureVector().setTerm(term, coocurrenceDocs / termDocs);
-        }
-
-        docPseudoQuery.getFeatureVector().clip(numTerms);
-
-        return docPseudoQuery;
+        return queryDependentPseudoQuery;
     }
 }
