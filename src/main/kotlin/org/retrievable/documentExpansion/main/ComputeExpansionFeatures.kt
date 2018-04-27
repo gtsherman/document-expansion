@@ -8,7 +8,7 @@ import edu.gslis.searchhits.IndexBackedSearchHit
 import edu.gslis.searchhits.readTrecOutput
 import edu.gslis.utils.Stopper
 import org.apache.commons.configuration.PropertiesConfiguration
-import org.retrievable.documentExpansion.features.documentClarity
+import org.retrievable.documentExpansion.features.documentSCS
 import org.retrievable.documentExpansion.features.documentDiversity
 import org.retrievable.documentExpansion.features.documentLength
 import org.retrievable.documentExpansion.features.documentRank
@@ -51,7 +51,7 @@ fun main(args: Array<String>) {
             val length = documentLength(document)
             val diversity = documentDiversity(document)
             val initialRank = documentRank(document, baselineResults.getSearchHits(query))
-            val clarity = documentClarity(document, targetIndex)
+            val clarity = documentSCS(document, targetIndex)
 
             // Compute rank change
             val expansionRank = documentRank(document, expansionResults.getSearchHits(query))
