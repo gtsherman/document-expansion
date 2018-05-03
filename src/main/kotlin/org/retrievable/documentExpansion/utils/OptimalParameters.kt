@@ -7,7 +7,13 @@ import java.util.*
 
 class OptimalParameters(private val paramsFile: File, private val queryName: String) {
 
+    private val ORIGINAL_WEIGHT = "origW"
+    private val EXPANSION_WEIGHT = "expW"
+    private val EXPANSION_DOCS = "expDocs"
+    private val EXPANSION_TERMS = "expTerms"
+
     var origWeight = 1.0
+    var expWeights = listOf(0.0)
     var numDocs = 5
     var numTerms = 5
 
@@ -26,9 +32,10 @@ class OptimalParameters(private val paramsFile: File, private val queryName: Str
                 val parts = line.split(" ")
                 if (parts[0] == queryName) {
                     val paramKeyVals = parts[1].trim().split(",")
-                    origWeight = paramKeyVals[0].split(":")[1].toDouble()
-                    numDocs = paramKeyVals[1].split(":")[1].toInt()
-                    numTerms = paramKeyVals[2].split(":")[1].toInt()
+                    origWeight = paramKeyVals.first { it.startsWith(ORIGINAL_WEIGHT) }.split(":").last().toDouble()
+                    numDocs = paramKeyVals.first { it.startsWith(EXPANSION_DOCS) }.split(":").last().toInt()
+                    numTerms = paramKeyVals.first { it.startsWith(EXPANSION_TERMS) }.split(":").last().toInt()
+                    expWeights = paramKeyVals.filter { it.startsWith(EXPANSION_WEIGHT) }.map { it.split(":").last().toDouble() }
                     break
                 }
             }
@@ -38,4 +45,5 @@ class OptimalParameters(private val paramsFile: File, private val queryName: Str
             System.exit(-1)
         }
     }
+
 }

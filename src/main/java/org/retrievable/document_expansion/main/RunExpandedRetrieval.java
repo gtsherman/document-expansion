@@ -21,12 +21,13 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.retrievable.document_expansion.expansion.DocumentExpander;
+import org.retrievable.document_expansion.lms.InterpolationWeights;
 import org.retrievable.document_expansion.scoring.ExpansionDocScorer;
 
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * New model:
@@ -46,7 +47,9 @@ public class RunExpandedRetrieval {
         Stopper stopper = new Stopper(config.getString("stoplist"));
 
         IndexWrapperIndriImpl targetIndex = new IndexWrapperIndriImpl(config.getString("target-index"));
-        IndexWrapperIndriImpl expansionIndex = new CachedFeatureVectorIndexWrapperIndriImpl(config.getString("expansion-index"));
+        List<IndexWrapperIndriImpl> expansionIndexes = Arrays.stream(config.getStringArray("expansion-index"))
+                .map(expInd -> new CachedFeatureVectorIndexWrapperIndriImpl(expInd))
+                .collect(Collectors.toList());
 
         GQueries queries = GQueriesFactory.getGQueries(config.getString("queries"));
         GQuery query = queries.getNamedQuery(queryName);
@@ -58,8 +61,11 @@ public class RunExpandedRetrieval {
         int maxNumDocs = Integer.parseInt(config.getString("max-docs", "25"));
         int numDocsInterval = Integer.parseInt(config.getString("docs-interval", "5"));
 
-        DocumentExpander docExpander = new DocumentExpander(expansionIndex, numTerms, stopper);
-        docExpander.setMaxNumDocs(maxNumDocs);
+        List<DocumentExpander> docExpanders = expansionIndexes
+                .stream()
+                .map(expansionIndex -> new DocumentExpander(expansionIndex, numTerms, stopper))
+                .collect(Collectors.toList());
+        docExpanders.stream().forEach(docExpander -> docExpander.setMaxNumDocs(maxNumDocs));
 
         FormattedOutputTrecEval out = FormattedOutputTrecEval.getInstance(
                 "tmp",
@@ -68,7 +74,10 @@ public class RunExpandedRetrieval {
 
         // Create scorers
         DocScorer dirichletScorer = new CachedDocScorer(new DirichletDocScorer(targetCollectionStats));
-        ExpansionDocScorer expansionScorer = new ExpansionDocScorer(2500, docExpander);
+        List<ExpansionDocScorer> expansionScorers = docExpanders
+                .stream()
+                .map(docExpander -> new ExpansionDocScorer(2500, docExpander))
+                .collect(Collectors.toList());
 
         Map<DocScorer, Double> scorers = new HashMap<>();
         DocScorer interpolatedScorer = new InterpolatedDocScorer(scorers);
@@ -80,14 +89,27 @@ public class RunExpandedRetrieval {
 
         // Iterate over parameter settings
         for (int numDocs = minNumDocs; numDocs <= maxNumDocs; numDocs += numDocsInterval) {
-            expansionScorer.setNumDocs(numDocs);
-            for (int origWeightInt = 0; origWeightInt <= 10; origWeightInt++) {
-                double origWeight = origWeightInt / 10.0;
+            for (ExpansionDocScorer expansionScorer : expansionScorers) {
+                expansionScorer.setNumDocs(numDocs);
+            }
 
+            // Add 1 for the original document scorer
+            List<List<Double>> interpolationWeights = InterpolationWeights.weights(expansionScorers.size() + 1);
+            for (List<Double> interpolationWeightCombination : interpolationWeights) {
+                double origWeight = interpolationWeightCombination.get(0);
                 scorers.put(dirichletScorer, origWeight);
-                scorers.put(expansionScorer, 1 - origWeight);
 
-                out.setRunId("origW:" + origWeight + ",expDocs:" + numDocs + ",expTerms:" + numTerms);
+                String expansionWeights = "";
+                for (int i = 0; i < expansionScorers.size(); i++) {
+                    double expansionWeight = interpolationWeightCombination.get(i + 1);
+
+                    ExpansionDocScorer expansionScorer = expansionScorers.get(i);
+                    scorers.put(expansionScorer, expansionWeight);
+
+                    expansionWeights += "expW" + (i + 1) + ":" + expansionWeight;
+                }
+
+                out.setRunId(expansionWeights + ",origW:" + origWeight + ",expDocs:" + numDocs + ",expTerms:" + numTerms);
 
                 for (SearchHit doc : results) {
                     double expandedScore = queryScorer.scoreQuery(query, doc);
