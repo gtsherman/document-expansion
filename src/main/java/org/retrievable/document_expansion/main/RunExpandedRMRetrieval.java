@@ -35,6 +35,7 @@ public class RunExpandedRMRetrieval {
 
 		//int numTerms = Integer.parseInt(args[1]);
 		String queryName = args[1];
+		String metric = args[2].trim();
 
 		// Load resources
 		Stopper stopper = new Stopper(config.getString("stoplist"));
@@ -50,7 +51,7 @@ public class RunExpandedRMRetrieval {
 		CollectionStats targetCollectionStats = new IndexBackedCollectionStats();
 		targetCollectionStats.setStatSource(config.getString("target-index"));
 
-		String paramsFile = config.getString("optimal-params");
+		String paramsFile = config.getString("optimal-params") + "." + metric;
 		OptimalParameters expansionParams = new OptimalParameters(new File(paramsFile), queryName);
 
 		int minFbDocs = Integer.parseInt(config.getString("min-fbdocs", "10"));
