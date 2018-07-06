@@ -29,7 +29,8 @@ fun main(args: Array<String>) {
     val qrels = Qrels(config.getString("qrels"), true, 1)
     val sampleSize = Integer.parseInt(config.getString("sample-size", "500"))
 
-    val docs = File(args[1]).readLines().map { val data = it.split(','); Pair(data[0], data[1]) }.drop(1).toSet()
+    //val docs = File(args[1]).readLines().map { val data = it.split(','); Pair(data[0], data[1]) }.drop(1).toSet()
+    //val sampledDocs = docs.map { val d = IndexBackedSearchHit(targetIndex); d.docno = it.second; d }
 
     // Dependent resources
     val targetCollectionStats = IndexBackedCollectionStats()
@@ -44,7 +45,7 @@ fun main(args: Array<String>) {
     val targetDocumentExpander = DocumentExpander(targetIndex, 10, stopper)
 
     // Sample documents
-    /*val relDocs = SearchHits(
+    val relDocs = SearchHits(
             queries
                     .map { query -> qrels.getRelDocs(query.title) }
                     .reduce { collected, thisQueryDocs -> collected union thisQueryDocs }
@@ -65,7 +66,7 @@ fun main(args: Array<String>) {
                         searchHit
                     }
     )
-    val anyDocs = SearchHits(
+    /*val anyDocs = SearchHits(
             queries
                     .map { query -> targetIndex.runQuery(query, 1000) }
                     .fold(HashSet<String>(), { acc, searchHits -> acc.addAll(searchHits.hits().map { it.docno }); acc })
@@ -75,18 +76,17 @@ fun main(args: Array<String>) {
                         searchHit.docno = docno
                         searchHit
                     }
-    )
+    )*/
 
-    val numberOfEachJudged = (sampleSize * 0.3).toInt()
-    val numberOfPool = sampleSize - (numberOfEachJudged * 2)
+    val numberOfEachJudged = (sampleSize * 0.5).toInt()
+    //val numberOfPool = sampleSize - (numberOfEachJudged * 2)
 
     val sampledRelDocs = sampleDocuments(numberOfEachJudged, relDocs)
     val sampledNonRelDocs = sampleDocuments(numberOfEachJudged, nonRelDocs)
-    val sampledPoolDocs = sampleDocuments(numberOfPool, anyDocs)
+    //val sampledPoolDocs = sampleDocuments(numberOfPool, anyDocs)
 
-    val sampledDocs = sampledRelDocs union sampledNonRelDocs union sampledPoolDocs*/
+    val sampledDocs = sampledRelDocs union sampledNonRelDocs// union sampledPoolDocs
 
-    val sampledDocs = docs.map { val d = IndexBackedSearchHit(targetIndex); d.docno = it.second; d }
     // Sample terms
     sampledDocs.forEach { doc ->
         val sampledTerms = HashSet<String>()
@@ -101,7 +101,7 @@ fun main(args: Array<String>) {
                 stopper
         )
         removeNumbers(externalExpansionRM1)
-        sampledTerms.addAll(sampleTerms(10, externalExpansionRM1, stopper, exclude = sampledTerms))
+        sampledTerms.addAll(sampleTerms(20, externalExpansionRM1, stopper, exclude = sampledTerms))
 
         val targetExpansionRM1 = targetRM1Builder.buildRelevanceModel(
                 targetDocumentExpander.createDocumentPseudoQuery(doc),
