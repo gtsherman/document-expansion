@@ -44,8 +44,10 @@ fun main(args: Array<String>) {
     val switch = CollectionSwitch(indexesDir, queriesDir, qrelsDir)
 
     println(
-            arrayOf("docno",
+            arrayOf("user",
+                    "docno",
                     "query",
+                    "relevance",
                     "probChange",
                     "totalProbTarget",
                     "totalProbExpansion",
@@ -74,132 +76,135 @@ fun main(args: Array<String>) {
                     "qTTSim").joinToString(",")
     )
 
-    val userAnnotations = topicTermsData.annotationsBy("test")
-    for (docno in userAnnotations.keys) {
-        val collection = topicTermsData.collectionOf(docno)
+    for (user in topicTermsData.users()) {
+        val userAnnotations = topicTermsData.annotationsBy(user)
+        for (docno in userAnnotations.keys) {
+            val collection = topicTermsData.collectionOf(docno)
 
-        val topicTerms = userAnnotations.getOrDefault(docno, HashSet())
-        val topicTermsQuery = GQuery()
-        topicTermsQuery.featureVector = FeatureVector(null)
-        topicTerms.forEach { topicTermsQuery.featureVector.addTerm(it) }
+            val topicTerms = userAnnotations.getOrDefault(docno, HashSet())
+            val topicTermsQuery = GQuery()
+            topicTermsQuery.featureVector = FeatureVector(null)
+            topicTerms.forEach { topicTermsQuery.featureVector.addTerm(it) }
 
-        val document = IndexBackedSearchHit(switch.index(collection))
-        document.docno = docno
-
-        //val relevantQueries = switch.queries(collection).filter { query -> switch.qrels(collection).isRel(query.title, docno) }
-        val relevantQueries = switch.queries(collection).filter { query -> switch.qrels(collection).getNonRelDocs(query.title).contains(docno) }
-        for (relevantQuery in relevantQueries) {
-            relevantQuery.applyStopper(stopper)
-
-            val optimalParameters = OptimalParameters(File("/home/gsherma2/doc-exp/out/ap/wiki/optimal_perq"), relevantQuery.title)
-
-            val docExpander = DocumentExpander(expansionIndex, optimalParameters.numTerms, stopper)
-            val expansionDocScorer = ExpansionDocScorer(docExpander, optimalParameters.numDocs)
-            val interpScorer = InterpolatedDocScorer(mapOf(switch.scorer(collection) to optimalParameters.origWeight, expansionDocScorer to 1 - optimalParameters.origWeight))
-            val queryScorer = QueryLikelihoodQueryScorer(switch.scorer(collection))
-            val expQueryScorer = QueryLikelihoodQueryScorer(expansionDocScorer)
-            val fullQueryScorer = QueryLikelihoodQueryScorer(interpScorer)
+            val document = IndexBackedSearchHit(switch.index(collection))
+            document.docno = docno
 
             //val relevantQueries = switch.queries(collection).filter { query -> switch.qrels(collection).isRel(query.title, docno) }
+            val relevantQueries = switch.queries(collection).filter { query -> switch.qrels(collection).getPool(query.title).contains(docno) }
+            for (relevantQuery in relevantQueries) {
+                relevantQuery.applyStopper(stopper)
+                val relevanceLevel = switch.qrels(collection).getRelLevel(relevantQuery.title, docno)
 
-            val probChange = probabilityChange(topicTerms, switch.scorer(collection), expansionDocScorer, document)
-            val totalProbTarget = totalProbability(topicTerms, switch.scorer(collection), document)
-            val totalProbExpansion = totalProbability(topicTerms, expansionDocScorer, document)
-            val totalProbExpanded = totalProbability(topicTerms, interpScorer, document)
-            val qtotalProbTarget = totalProbability(relevantQuery.featureVector.features, switch.scorer(collection), document)
-            val qtotalProbExpansion = totalProbability(relevantQuery.featureVector.features, expansionDocScorer, document)
-            val qtotalProbExpanded = totalProbability(relevantQuery.featureVector.features, interpScorer, document)
-            val totalProbTargetQL = queryScorer.scoreQuery(topicTermsQuery, document)
-            val totalProbExpansionQL = expQueryScorer.scoreQuery(topicTermsQuery, document)
-            val totalProbExpandedQL = fullQueryScorer.scoreQuery(topicTermsQuery, document)
-            val qtotalProbTargetQL = queryScorer.scoreQuery(relevantQuery, document)
-            val qtotalProbExpansionQL = expQueryScorer.scoreQuery(relevantQuery, document)
-            val qtotalProbExpandedQL = fullQueryScorer.scoreQuery(relevantQuery, document)
-            var ttProbTtest: Double
-            try {
-                ttProbTtest = TTest().pairedTTest(
-                        topicTerms
-                                .toSet()
-                                .sorted()
-                                .map { expansionDocScorer.scoreTerm(it, document) }
-                                .toDoubleArray(),
-                        topicTerms
-                                .toSet()
-                                .sorted()
-                                .map { switch.scorer(collection).scoreTerm(it, document) }
-                                .toDoubleArray()
+                val optimalParameters = OptimalParameters(File("/home/gsherma2/doc-exp/out/$collection/wiki/optimal_perq"), relevantQuery.title)
+
+                val docExpander = DocumentExpander(expansionIndex, optimalParameters.numTerms, stopper)
+                val expansionDocScorer = ExpansionDocScorer(docExpander, optimalParameters.numDocs)
+                val interpScorer = InterpolatedDocScorer(mapOf(switch.scorer(collection) to optimalParameters.origWeight, expansionDocScorer to 1 - optimalParameters.origWeight))
+                val queryScorer = QueryLikelihoodQueryScorer(switch.scorer(collection))
+                val expQueryScorer = QueryLikelihoodQueryScorer(expansionDocScorer)
+                val fullQueryScorer = QueryLikelihoodQueryScorer(interpScorer)
+
+                //val relevantQueries = switch.queries(collection).filter { query -> switch.qrels(collection).isRel(query.title, docno) }
+
+                val probChange = probabilityChange(topicTerms, switch.scorer(collection), expansionDocScorer, document)
+                val totalProbTarget = totalProbability(topicTerms, switch.scorer(collection), document)
+                val totalProbExpansion = totalProbability(topicTerms, expansionDocScorer, document)
+                val totalProbExpanded = totalProbability(topicTerms, interpScorer, document)
+                val qtotalProbTarget = totalProbability(relevantQuery.featureVector.features, switch.scorer(collection), document)
+                val qtotalProbExpansion = totalProbability(relevantQuery.featureVector.features, expansionDocScorer, document)
+                val qtotalProbExpanded = totalProbability(relevantQuery.featureVector.features, interpScorer, document)
+                val totalProbTargetQL = queryScorer.scoreQuery(topicTermsQuery, document)
+                val totalProbExpansionQL = expQueryScorer.scoreQuery(topicTermsQuery, document)
+                val totalProbExpandedQL = fullQueryScorer.scoreQuery(topicTermsQuery, document)
+                val qtotalProbTargetQL = queryScorer.scoreQuery(relevantQuery, document)
+                val qtotalProbExpansionQL = expQueryScorer.scoreQuery(relevantQuery, document)
+                val qtotalProbExpandedQL = fullQueryScorer.scoreQuery(relevantQuery, document)
+                var ttProbTtest: Double
+                try {
+                    ttProbTtest = TTest().pairedTTest(
+                            topicTerms
+                                    .toSet()
+                                    .sorted()
+                                    .map { expansionDocScorer.scoreTerm(it, document) }
+                                    .toDoubleArray(),
+                            topicTerms
+                                    .toSet()
+                                    .sorted()
+                                    .map { switch.scorer(collection).scoreTerm(it, document) }
+                                    .toDoubleArray()
+                    )
+                } catch (e: NumberIsTooSmallException) {
+                    ttProbTtest = -1.0
+                }
+                var qProbTtest: Double
+                try {
+                    qProbTtest = TTest().pairedTTest(
+                            relevantQuery.featureVector.features
+                                    .toSet()
+                                    .sorted()
+                                    .map { expansionDocScorer.scoreTerm(it, document) }
+                                    .toDoubleArray(),
+                            relevantQuery.featureVector.features
+                                    .toSet()
+                                    .sorted()
+                                    .map { switch.scorer(collection).scoreTerm(it, document) }
+                                    .toDoubleArray()
+                    )
+                } catch (e: NumberIsTooSmallException) {
+                    qProbTtest = -1.0
+                }
+                val topicTermsAPTarget = topicTermsAveragePrecision(topicTerms, document, switch.scorer(collection), stopper)
+                val topicTermsAPExpansion = topicTermsAveragePrecision(topicTerms, document, expansionDocScorer, stopper)
+                val topicTermsAPExpanded = topicTermsAveragePrecision(topicTerms, document, interpScorer, stopper)
+                val qtopicTermsAPTarget = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, switch.scorer(collection), stopper)
+                val qtopicTermsAPExpansion = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, expansionDocScorer, stopper)
+                val qtopicTermsAPExpanded = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, interpScorer, stopper)
+                val pseudoQueryRecall = pseudoQueryTermRecall(topicTerms, document, docExpander)
+                val qpseudoQueryRecall = pseudoQueryTermRecall(relevantQuery.featureVector.features, document, docExpander)
+                val pseudoQueryVsTopicTerms = pseudoQueryVsTopicTermsResultsRecall(topicTerms, document, docExpander, optimalParameters.numDocs)
+                val qpseudoQueryVsTopicTerms = pseudoQueryVsTopicTermsResultsRecall(relevantQuery.featureVector.features, document, docExpander, optimalParameters.numDocs)
+                //val queryTopicTermSimilarity = relevantQueries.map { query -> queryTopicTermSimilarity(topicTerms, query, stopper, stem = true) }
+                val queryTopicTermSimilarity = queryTopicTermSimilarity(topicTerms, relevantQuery, stopper)
+                var queryTopicTermSimilarityString = queryTopicTermSimilarity
+
+                /*if (queryTopicTermSimilarity.isEmpty()) {
+                queryTopicTermSimilarityString += "-1.0"
+            }*/
+
+                println(
+                        "$user,$docno,${relevantQuery.title},$relevanceLevel," +
+                                doubleArrayOf(
+                                        probChange,
+                                        totalProbTarget,
+                                        totalProbExpansion,
+                                        totalProbExpanded,
+                                        qtotalProbTarget,
+                                        qtotalProbExpansion,
+                                        qtotalProbExpanded,
+                                        totalProbTargetQL,
+                                        totalProbExpansionQL,
+                                        totalProbExpandedQL,
+                                        qtotalProbTargetQL,
+                                        qtotalProbExpansionQL,
+                                        qtotalProbExpandedQL,
+                                        ttProbTtest,
+                                        qProbTtest,
+                                        topicTermsAPTarget,
+                                        topicTermsAPExpansion,
+                                        topicTermsAPExpanded,
+                                        qtopicTermsAPTarget,
+                                        qtopicTermsAPExpansion,
+                                        qtopicTermsAPExpanded,
+                                        pseudoQueryRecall,
+                                        qpseudoQueryRecall,
+                                        //pseudoQueryJaccard,
+                                        pseudoQueryVsTopicTerms,
+                                        qpseudoQueryVsTopicTerms
+                                        //pseudoQueryVsTopicTermsJaccard
+                                ).joinToString(",") + "," +
+                                queryTopicTermSimilarityString
                 )
-            } catch (e: NumberIsTooSmallException) {
-                ttProbTtest = -1.0
             }
-            var qProbTtest: Double
-            try {
-                qProbTtest = TTest().pairedTTest(
-                        relevantQuery.featureVector.features
-                                .toSet()
-                                .sorted()
-                                .map { expansionDocScorer.scoreTerm(it, document) }
-                                .toDoubleArray(),
-                        relevantQuery.featureVector.features
-                                .toSet()
-                                .sorted()
-                                .map { switch.scorer(collection).scoreTerm(it, document) }
-                                .toDoubleArray()
-                )
-            } catch (e: NumberIsTooSmallException) {
-                qProbTtest = -1.0
-            }
-            val topicTermsAPTarget = topicTermsAveragePrecision(topicTerms, document, switch.scorer(collection), stopper)
-            val topicTermsAPExpansion = topicTermsAveragePrecision(topicTerms, document, expansionDocScorer, stopper)
-            val topicTermsAPExpanded = topicTermsAveragePrecision(topicTerms, document, interpScorer, stopper)
-            val qtopicTermsAPTarget = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, switch.scorer(collection), stopper)
-            val qtopicTermsAPExpansion = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, expansionDocScorer, stopper)
-            val qtopicTermsAPExpanded = topicTermsAveragePrecision(relevantQuery.featureVector.features, document, interpScorer, stopper)
-            val pseudoQueryRecall = pseudoQueryTermRecall(topicTerms, document, docExpander)
-            val qpseudoQueryRecall = pseudoQueryTermRecall(relevantQuery.featureVector.features, document, docExpander)
-            val pseudoQueryVsTopicTerms = pseudoQueryVsTopicTermsResultsRecall(topicTerms, document, docExpander, optimalParameters.numDocs)
-            val qpseudoQueryVsTopicTerms = pseudoQueryVsTopicTermsResultsRecall(relevantQuery.featureVector.features, document, docExpander, optimalParameters.numDocs)
-            //val queryTopicTermSimilarity = relevantQueries.map { query -> queryTopicTermSimilarity(topicTerms, query, stopper, stem = true) }
-            val queryTopicTermSimilarity = queryTopicTermSimilarity(topicTerms, relevantQuery, stopper)
-            var queryTopicTermSimilarityString = queryTopicTermSimilarity
-
-            /*if (queryTopicTermSimilarity.isEmpty()) {
-            queryTopicTermSimilarityString += "-1.0"
-        }*/
-
-            println(
-                    "$docno,${relevantQuery.title}," +
-                            doubleArrayOf(
-                                    probChange,
-                                    totalProbTarget,
-                                    totalProbExpansion,
-                                    totalProbExpanded,
-                                    qtotalProbTarget,
-                                    qtotalProbExpansion,
-                                    qtotalProbExpanded,
-                                    totalProbTargetQL,
-                                    totalProbExpansionQL,
-                                    totalProbExpandedQL,
-                                    qtotalProbTargetQL,
-                                    qtotalProbExpansionQL,
-                                    qtotalProbExpandedQL,
-                                    ttProbTtest,
-                                    qProbTtest,
-                                    topicTermsAPTarget,
-                                    topicTermsAPExpansion,
-                                    topicTermsAPExpanded,
-                                    qtopicTermsAPTarget,
-                                    qtopicTermsAPExpansion,
-                                    qtopicTermsAPExpanded,
-                                    pseudoQueryRecall,
-                                    qpseudoQueryRecall,
-                                    //pseudoQueryJaccard,
-                                    pseudoQueryVsTopicTerms,
-                                    qpseudoQueryVsTopicTerms
-                                    //pseudoQueryVsTopicTermsJaccard
-                            ).joinToString(",") + "," +
-                            queryTopicTermSimilarityString
-            )
         }
     }
 }
@@ -249,12 +254,19 @@ class TopicTerms(val topicTerms: Collection<TopicTerm>) {
         return topicTerms.filter { it.docno == docno }.map { it.index }.toSet().first()
     }
 
+    fun users() : Set<String> {
+        return topicTerms
+                .map { it.user }
+                .toSet()
+    }
+
 }
 
 private class CollectionSwitch(val indexesDir: String, val queriesDir: String, val qrelsDir: String) {
-    private val AP = "AP_88-89"
+    private val AP = "ap"
     private val ROBUST = "robust"
     private val WT10G = "wt10g"
+    private val GOV2 = "gov2"
 
     private val indexes = HashMap<String, IndexWrapperIndriImpl>()
     private val queries = HashMap<String, GQueries>()
@@ -271,6 +283,7 @@ private class CollectionSwitch(val indexesDir: String, val queriesDir: String, v
             AP -> "101-200"
             ROBUST -> "robust"
             WT10G -> "451-550"
+            GOV2 -> "gov2"
             else -> "" // blah :(
         }
         return queries.getOrPut(id, { GQueriesFactory.getGQueries(Paths.get(queriesDir, "topics.$queriesName.json").toString()) })
@@ -281,6 +294,7 @@ private class CollectionSwitch(val indexesDir: String, val queriesDir: String, v
             AP -> "ap"
             ROBUST -> "robust"
             WT10G -> "wt10g"
+            GOV2 -> "gov2"
             else -> "" // blah :(
         }
         return qrels.getOrPut(id, { Qrels(Paths.get(qrelsDir, "qrels.$qrelsName").toString(), true, 1) })
