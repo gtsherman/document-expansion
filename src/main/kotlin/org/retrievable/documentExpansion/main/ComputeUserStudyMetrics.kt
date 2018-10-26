@@ -262,7 +262,7 @@ class TopicTerms(val topicTerms: Collection<TopicTerm>) {
 
 }
 
-private class CollectionSwitch(val indexesDir: String, val queriesDir: String, val qrelsDir: String) {
+class CollectionSwitch(val indexesDir: String, val queriesDir: String, val qrelsDir: String) {
     private val AP = "ap"
     private val ROBUST = "robust"
     private val WT10G = "wt10g"
