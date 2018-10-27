@@ -25,7 +25,7 @@ fun main(args: Array<String>) {
 
     val hits = File(args[1]).readLines().map {
         val parts = it.split(",")
-        Triple(parts[0], parts[1], parts[2])
+        AnnotatedDocument(parts[0], parts[1], parts[2])
     }
 
     // Load dependent resources
@@ -59,9 +59,9 @@ fun main(args: Array<String>) {
     hits.forEach {
         i++
 
-        val index = it.third
-        val docno = it.first
-        val query = switch.queries(index).getNamedQuery(it.second)
+        val index = it.indexName
+        val docno = it.docno
+        val query = switch.queries(index).getNamedQuery(it.queryTitle)
 
         System.err.println("Working on $docno/${query.title} ($i/${hits.size})")
 
@@ -124,3 +124,5 @@ fun main(args: Array<String>) {
         println(headers.map { data[it] }.joinToString(","))
     }
 }
+
+data class AnnotatedDocument(val docno: String, val queryTitle: String, val indexName: String)

@@ -35,7 +35,7 @@ class OptimalParameters(private val paramsFile: File, private val queryName: Str
                     origWeight = paramKeyVals.first { it.startsWith(ORIGINAL_WEIGHT) }.split(":").last().toDouble()
                     numDocs = paramKeyVals.first { it.startsWith(EXPANSION_DOCS) }.split(":").last().toInt()
                     numTerms = paramKeyVals.first { it.startsWith(EXPANSION_TERMS) }.split(":").last().toInt()
-                    expWeights = paramKeyVals.filter { it.startsWith(EXPANSION_WEIGHT) }.map { it.split(":").last().toDouble() }
+                    //expWeights = paramKeyVals.filter { it.startsWith(EXPANSION_WEIGHT) }.map { it.split(":").last().toDouble() }
                     break
                 }
             }
