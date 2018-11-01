@@ -39,9 +39,9 @@ fun main(args: Array<String>) {
 			"averageGroupSimilarityCosine"
     )
 
-    println(headers.joinToString(","))
+    //println(headers.joinToString(","))
 
-    hits.forEach { hit ->
+    val features = hits.parallelStream().map { hit ->
         val query = switch.queries(hit.indexName).getNamedQuery(hit.queryTitle)
 
         // Get optimal expansion parameters for this query
@@ -91,23 +91,22 @@ fun main(args: Array<String>) {
         )
 
 
-        // Print data
-        println(
-                document.docno + "," +
-                query.title + "," +
-                doubleArrayOf(
-                        originalToExpandedKL,
-                        originalToExpansionKL,
-                        originalToExpandedCosine,
-                        originalToExpansionCosine,
-                        perplexityOfOriginal,
-                        //pairwiseSimilarityOfExpansionDocsShannonJenson,
-                        pairwiseSimilarityOfExpansionDocsCosine,
-                        //averageGroupSimilarityShannonJensen,
-                        averageGroupSimilarityCosine
-                ).joinToString(",")
-        )
+        document.docno + "," +
+        query.title + "," +
+        doubleArrayOf(
+                originalToExpandedKL,
+                originalToExpansionKL,
+                originalToExpandedCosine,
+                originalToExpansionCosine,
+                perplexityOfOriginal,
+                //pairwiseSimilarityOfExpansionDocsShannonJenson,
+                pairwiseSimilarityOfExpansionDocsCosine,
+                //averageGroupSimilarityShannonJensen,
+                averageGroupSimilarityCosine
+        ).joinToString(",")
     }
+
+    println(features.toArray().joinToString("\n"))
 }
 
 fun pairwiseSimilarity(documents: SearchHits, similarityFunction: (FeatureVector, FeatureVector) -> Double) : Double {

@@ -56,7 +56,7 @@ fun main(args: Array<String>) {
     println(headers.joinToString(","))
 
     var i = 0
-    hits.forEach {
+    val features = hits.parallelStream().map {
         i++
 
         val index = it.indexName
@@ -83,9 +83,6 @@ fun main(args: Array<String>) {
         val rm1 = GQuery()
         rm1.featureVector = rm1Vec
 
-        // Get RM1 results
-        val rm1Results = switch.index(index).runQuery(rm1, 1000)
-
         // Make the search hit
         val document = IndexBackedSearchHit(switch.index(index))
         document.docno = docno
@@ -109,7 +106,7 @@ fun main(args: Array<String>) {
                 //"initialRank" to documentRank(document, baselineResults.getSearchHits(query)),
                 "clarity" to documentSCS(document, switch.index(index)),
                 "queryProminence" to queryProminence(document, query, docExpander),
-                "rmImpQL" to rmImprovementQL(document, query, rm1, queryScorers.getOrPut(index) { QueryLikelihoodQueryScorer(DirichletDocScorer(collectionStats.get(index))) }),
+                "rmImpQL" to rmImprovementQL(document, query, rm1, queryScorers.getOrPut(index) { QueryLikelihoodQueryScorer(DirichletDocScorer(collectionStats[index])) }),
                 //"rmImpRank" to rmImprovementRank(document, baselineResults.getSearchHits(query), rm1Results),
                 "entropy" to documentEntropy(document),
                 "avgIDF" to avgIDF(docPseudoQuery, switch.index(index)),
@@ -121,8 +118,10 @@ fun main(args: Array<String>) {
         )
 
         // Print data
-        println(headers.map { data[it] }.joinToString(","))
+        headers.map { column -> data[column] }.joinToString(",")
     }
+
+    print(features.toArray().joinToString("\n"))
 }
 
 data class AnnotatedDocument(val docno: String, val queryTitle: String, val indexName: String)
