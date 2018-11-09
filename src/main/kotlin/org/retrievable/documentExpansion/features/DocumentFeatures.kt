@@ -1,10 +1,14 @@
 package org.retrievable.documentExpansion.features
 
+import edu.gslis.docscoring.support.IndexBackedCollectionStats
 import edu.gslis.indexes.IndexWrapper
 import edu.gslis.queries.GQuery
+import edu.gslis.scoring.DirichletDocScorer
+import edu.gslis.scoring.expansion.StandardRM1Builder
 import edu.gslis.scoring.queryscoring.QueryLikelihoodQueryScorer
 import edu.gslis.searchhits.SearchHit
 import edu.gslis.searchhits.SearchHits
+import edu.gslis.utils.Stopper
 import org.retrievable.documentExpansion.analysis.pseudoQueryTermRecall
 import org.retrievable.document_expansion.expansion.DocumentExpander
 import kotlin.math.log2
@@ -38,7 +42,7 @@ fun documentDiversity(document: SearchHit) : Double {
  * @return The rank of the document in the results list
  */
 fun documentRank(document: SearchHit, results: SearchHits) : Int {
-    return results.map({ it.docno }).indexOf(document.docno) + 1
+    return results.map { it.docno }.indexOf(document.docno) + 1
 }
 
 /**
@@ -116,4 +120,26 @@ fun documentEntropy(document: SearchHit) : Double {
         val termProb = document.featureVector.getFeatureWeight(it) / document.featureVector.length
         termProb * log2(termProb)
     }.sum()
+}
+
+private fun rmQuery(query: GQuery, index: IndexWrapper, stopper: Stopper) : GQuery {
+    val collectionStats = IndexBackedCollectionStats()
+    collectionStats.setStatSource(index)
+    val rm = StandardRM1Builder(collectionStats)
+            .buildRelevanceModel(query, index.runQuery(query, StandardRM1Builder.DEFAULT_FEEDBACK_DOCS), stopper)
+    val rmQuery = GQuery()
+    rmQuery.featureVector = rm
+    return rmQuery
+}
+
+fun documentRMRankChange(document: SearchHit, query: GQuery, index: IndexWrapper, stopper: Stopper) : Int {
+    val rmQuery = rmQuery(query, index, stopper)
+    return documentRank(document, index.runQuery(rmQuery, 100))
+}
+
+fun documentRMScoreChange(document: SearchHit, query: GQuery, index: IndexWrapper, stopper: Stopper) : Double {
+    val rmQuery = rmQuery(query, index, stopper)
+    val collectionStats = IndexBackedCollectionStats()
+    collectionStats.setStatSource(index)
+    return QueryLikelihoodQueryScorer(DirichletDocScorer(collectionStats)).scoreQuery(rmQuery, document)
 }
