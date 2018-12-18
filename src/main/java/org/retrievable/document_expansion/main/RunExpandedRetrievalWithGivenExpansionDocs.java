@@ -14,6 +14,7 @@ import edu.gslis.scoring.DocScorer;
 import edu.gslis.scoring.InterpolatedDocScorer;
 import edu.gslis.scoring.queryscoring.QueryLikelihoodQueryScorer;
 import edu.gslis.scoring.queryscoring.QueryScorer;
+import edu.gslis.searchhits.IndexBackedSearchHit;
 import edu.gslis.searchhits.SearchHit;
 import edu.gslis.searchhits.SearchHits;
 import edu.gslis.utils.Stopper;
@@ -21,10 +22,13 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.retrievable.document_expansion.expansion.DocumentExpander;
+import org.retrievable.document_expansion.expansion.PreExpandedDocumentExpander;
 import org.retrievable.document_expansion.lms.InterpolationWeights;
 import org.retrievable.document_expansion.scoring.ExpansionDocScorer;
 
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.OutputStreamWriter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -33,7 +37,7 @@ import java.util.stream.Collectors;
  * New model:
  * Run this code
  */
-public class RunExpandedRetrieval {
+public class RunExpandedRetrievalWithGivenExpansionDocs {
 
     public static void main(String[] args) throws ConfigurationException {
         // Load configuration
@@ -42,6 +46,7 @@ public class RunExpandedRetrieval {
         // Load run parameters
         int numTerms = Integer.parseInt(args[1]);
         String queryName = args[2];
+        String expansionDocsFile = args[3];
 
         // Load resources
         Stopper stopper = new Stopper(config.getString("stoplist"));
@@ -61,9 +66,33 @@ public class RunExpandedRetrieval {
         int maxNumDocs = Integer.parseInt(config.getString("max-docs", "25"));
         int numDocsInterval = Integer.parseInt(config.getString("docs-interval", "5"));
 
+        Map<Integer, SearchHits> expansionDocs = new HashMap<>();
+        try {
+            Scanner scanner = new Scanner(new File(expansionDocsFile));
+            while (scanner.hasNextLine()) {
+                String[] parts = scanner.nextLine().split(",");
+                String origDocno = parts[0];
+                int origDocID = targetIndex.getDocId(origDocno);
+                String relatedDocno = parts[1];
+                double cosine = Double.parseDouble(parts[2]);
+
+                IndexBackedSearchHit expHit = new IndexBackedSearchHit(targetIndex);
+                expHit.setDocno(relatedDocno);
+                expHit.setScore(cosine);
+
+                if (!expansionDocs.containsKey(origDocID)) {
+                    expansionDocs.put(origDocID, new SearchHits());
+                }
+                expansionDocs.get(origDocID).add(expHit);
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("Couldn't open file: " + expansionDocsFile);
+            System.exit(-1);
+        }
+
         List<DocumentExpander> docExpanders = expansionIndexes
                 .stream()
-                .map(expansionIndex -> new DocumentExpander(expansionIndex, numTerms, stopper))
+                .map(expansionIndex -> new PreExpandedDocumentExpander(expansionIndex, numTerms, stopper, expansionDocs))
                 .collect(Collectors.toList());
         docExpanders.stream().forEach(docExpander -> docExpander.setMaxNumDocs(maxNumDocs));
 

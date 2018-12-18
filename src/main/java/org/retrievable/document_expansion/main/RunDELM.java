@@ -81,7 +81,8 @@ public class RunDELM {
 		
 		// Setup scorers
 		//DocumentExpander docExpander = new DocumentExpander(expansionIndex, numTerms, numDocs, stopper);
-		DocumentExpander docExpander = new PreExpandedDocumentExpander(expansionIndex, docToExpDocs, numDocs);
+		DocumentExpander docExpander = new PreExpandedDocumentExpander(expansionIndex, 20, stopper, docToExpDocs);
+		docExpander.setMaxNumDocs(numDocs);
 		DocScorer scorer = new CachedDocScorer(new DirichletDocScorer(2500, expansionCollectionStats));
 		QueryScorer queryScorer = new QueryLikelihoodQueryScorer(scorer);
 		

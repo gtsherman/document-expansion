@@ -21,19 +21,24 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.retrievable.document_expansion.expansion.DocumentExpander;
+import org.retrievable.document_expansion.expansion.DocumentExpanderWithPremadePseudoQueries;
+import org.retrievable.document_expansion.expansion.PreExpandedDocumentExpander;
 import org.retrievable.document_expansion.lms.InterpolationWeights;
 import org.retrievable.document_expansion.scoring.ExpansionDocScorer;
 
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
  * New model:
  * Run this code
  */
-public class RunExpandedRetrieval {
+public class RunPremadePseudoQueryExpandedRetrieval {
 
     public static void main(String[] args) throws ConfigurationException {
         // Load configuration
@@ -42,6 +47,7 @@ public class RunExpandedRetrieval {
         // Load run parameters
         int numTerms = Integer.parseInt(args[1]);
         String queryName = args[2];
+        String premadePseudoQueries = args[3];
 
         // Load resources
         Stopper stopper = new Stopper(config.getString("stoplist"));
@@ -63,7 +69,11 @@ public class RunExpandedRetrieval {
 
         List<DocumentExpander> docExpanders = expansionIndexes
                 .stream()
-                .map(expansionIndex -> new DocumentExpander(expansionIndex, numTerms, stopper))
+                .map(expansionIndex -> {
+                    DocumentExpanderWithPremadePseudoQueries de = new DocumentExpanderWithPremadePseudoQueries(expansionIndex, numTerms, stopper);
+                    de.readPremadePseudoQueries(premadePseudoQueries);
+                    return de;
+                })
                 .collect(Collectors.toList());
         docExpanders.stream().forEach(docExpander -> docExpander.setMaxNumDocs(maxNumDocs));
 
