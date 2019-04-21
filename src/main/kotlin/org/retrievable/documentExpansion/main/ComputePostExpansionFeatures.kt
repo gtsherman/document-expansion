@@ -1,5 +1,8 @@
 package org.retrievable.documentExpansion.main
 
+import edu.gslis.eval.Qrels
+import edu.gslis.indexes.IndexWrapperIndriImpl
+import edu.gslis.queries.GQueriesFactory
 import edu.gslis.searchhits.IndexBackedSearchHit
 import edu.gslis.searchhits.SearchHits
 import edu.gslis.textrepresentation.FeatureVector
@@ -11,21 +14,25 @@ import org.retrievable.document_expansion.features.LMFeatures
 import org.retrievable.document_expansion.lms.LanguageModelEstimator
 import org.retrievable.document_expansion.scoring.ExpansionDocScorer
 import java.io.File
-import java.nio.file.Paths
+import java.util.*
 
 
 fun main(args: Array<String>) {
     // Load config
     val config = PropertiesConfiguration(args[0])
+    //val docListFile = args[1]
 
     // Load resources from config
-    val switch = CollectionSwitch(config.getString("indexes-dir"), config.getString("queries-dir"), config.getString("qrels-dir"))
     val stopper = Stopper(config.getString("stoplist"))
+    val targetIndex = IndexWrapperIndriImpl(config.getString("target-index"))
+    val expansionIndex = IndexWrapperIndriImpl(config.getString("expansion-index"))
+    val queries = GQueriesFactory.getGQueries(config.getString("queries"))
+    val qrels = Qrels(config.getString("qrels"), false, 1)
 
-    val hits = File(args[1]).readLines().map {
+    /*val hits = File(docListFile).readLines().map {
         val parts = it.split(",")
-        AnnotatedDocument(parts[0], parts[1], parts[2])
-    }
+        AnnotatedDocument(parts[0], parts[1])
+    }*/
 
     val headers = arrayOf(
             "docno",
@@ -41,23 +48,26 @@ fun main(args: Array<String>) {
 
     //println(headers.joinToString(","))
 
-    val features = hits.parallelStream().map { hit ->
-        val query = switch.queries(hit.indexName).getNamedQuery(hit.queryTitle)
+    val scanner = Scanner(System.`in`)
+    while (scanner.hasNextLine()) {
+        val parts = scanner.nextLine().split(",")
+        val hit = AnnotatedDocument(parts[0], parts[1])
+
+        val query = queries.getNamedQuery(hit.queryTitle)
 
         // Get optimal expansion parameters for this query
-        val collectionConfig = PropertiesConfiguration(File(Paths.get(config.getString("config-dir"), hit.indexName + ".wiki.properties").toString()))
-        val expansionParams = OptimalParameters(File(collectionConfig.getString("optimal-params")), query.title)
+        val expansionParams = OptimalParameters(File(config.getString("optimal-params")), query.title)
 
         // Create document expander
-        val documentExpander = DocumentExpander(switch.index("wikipedia"), expansionParams.numTerms, stopper)
+        val documentExpander = DocumentExpander(expansionIndex, expansionParams.numTerms, stopper)
 
-        val document = IndexBackedSearchHit(switch.index(hit.indexName))
+        val document = IndexBackedSearchHit(targetIndex)
         document.docno = hit.docno
 
         // Get language models
         document.featureVector.applyStopper(stopper)
         document.featureVector.clip(20)
-        val originalLM = LanguageModelEstimator.languageModel(document, switch.index(hit.indexName))
+        val originalLM = LanguageModelEstimator.languageModel(document, targetIndex)
 
         val expansionLM = LanguageModelEstimator.expansionLanguageModel(
                 document,
@@ -68,7 +78,7 @@ fun main(args: Array<String>) {
         val expandedLM = LanguageModelEstimator.combinedLanguageModel(originalLM, expansionLM, expansionParams.origWeight)
 
         // Compute post-expansion features
-        val originalToExpandedKL = LMFeatures.languageModelsKL(originalLM, expandedLM)
+        //val originalToExpandedKL = LMFeatures.languageModelsKL(originalLM, expandedLM)
         val originalToExpansionKL = LMFeatures.languageModelsKL(originalLM, expansionLM)
         val perplexityOfOriginal = LMFeatures.perplexity(document.featureVector, expandedLM)
         /*val pairwiseSimilarityOfExpansionDocsShannonJenson = pairwiseSimilarity(
@@ -79,7 +89,7 @@ fun main(args: Array<String>) {
                 documentExpander.expandDocument(document, expansionParams.numDocs),
                 LMFeatures::languageModelsShannonJensen
         )*/
-        val originalToExpandedCosine = LMFeatures.languageModelsCosine(originalLM, expandedLM)
+        //val originalToExpandedCosine = LMFeatures.languageModelsCosine(originalLM, expandedLM)
         val originalToExpansionCosine = LMFeatures.languageModelsCosine(originalLM, expansionLM)
         val pairwiseSimilarityOfExpansionDocsCosine = pairwiseSimilarity(
                 documentExpander.expandDocument(document, expansionParams.numDocs),
@@ -91,22 +101,20 @@ fun main(args: Array<String>) {
         )
 
 
-        document.docno + "," +
+        println(document.docno + "," +
         query.title + "," +
         doubleArrayOf(
-                originalToExpandedKL,
+                //originalToExpandedKL,
                 originalToExpansionKL,
-                originalToExpandedCosine,
+                //originalToExpandedCosine,
                 originalToExpansionCosine,
                 perplexityOfOriginal,
                 //pairwiseSimilarityOfExpansionDocsShannonJenson,
                 pairwiseSimilarityOfExpansionDocsCosine,
                 //averageGroupSimilarityShannonJensen,
                 averageGroupSimilarityCosine
-        ).joinToString(",")
+        ).joinToString(","))
     }
-
-    println(features.toArray().joinToString("\n"))
 }
 
 fun pairwiseSimilarity(documents: SearchHits, similarityFunction: (FeatureVector, FeatureVector) -> Double) : Double {

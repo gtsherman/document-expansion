@@ -98,7 +98,7 @@ public class RunExpandedRMRetrievalWithGivenExpansionDocs {
 
 		// Prep RM builders
         ExpandedRM1Builder rm1Builder = new ExpandedRM1Builder(maxFbDocs, maxFbTerms, targetCollectionStats, docExpanders, expansionParams.getNumDocs());
-        List<Double> interpolationWeights = expansionParams.getExpWeights();
+        List<Double> interpolationWeights = new ArrayList<>(expansionParams.getExpWeights());
         interpolationWeights.add(0, expansionParams.getOrigWeight());
         rm1Builder.setInterpolationWeights(interpolationWeights);
 		RM3Builder rm3Builder = new RM3Builder();

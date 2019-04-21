@@ -35,7 +35,6 @@ public class RunExpandedRMRetrieval {
 
 		//int numTerms = Integer.parseInt(args[1]);
 		String queryName = args[1];
-		String metric = args[2].trim();
 
 		// Load resources
 		Stopper stopper = new Stopper(config.getString("stoplist"));
@@ -51,7 +50,7 @@ public class RunExpandedRMRetrieval {
 		CollectionStats targetCollectionStats = new IndexBackedCollectionStats();
 		targetCollectionStats.setStatSource(config.getString("target-index"));
 
-		String paramsFile = config.getString("optimal-params") + "." + metric;
+		String paramsFile = config.getString("optimal-params");
 		OptimalParameters expansionParams = new OptimalParameters(new File(paramsFile), queryName);
 
 		int minFbDocs = Integer.parseInt(config.getString("min-fbdocs", "10"));
@@ -73,7 +72,7 @@ public class RunExpandedRMRetrieval {
 
 		// Prep RM builders
         ExpandedRM1Builder rm1Builder = new ExpandedRM1Builder(maxFbDocs, maxFbTerms, targetCollectionStats, docExpanders, expansionParams.getNumDocs());
-        List<Double> interpolationWeights = expansionParams.getExpWeights();
+        List<Double> interpolationWeights = new ArrayList<>(expansionParams.getExpWeights());
         interpolationWeights.add(0, expansionParams.getOrigWeight());
         rm1Builder.setInterpolationWeights(interpolationWeights);
 		RM3Builder rm3Builder = new RM3Builder();
@@ -112,11 +111,11 @@ public class RunExpandedRMRetrieval {
                     // Write results
                     String expWeightLabels = "";
                     for (int i = 1; i < interpolationWeights.size(); i++) {
-                        expWeightLabels += "expW" + i + ":" + interpolationWeights.get(i);
+                        expWeightLabels += "expW" + i + ":" + interpolationWeights.get(i) + ",";
                     }
                     out.setRunId(
                             expWeightLabels +
-                                    ",origW:" + expansionParams.getOrigWeight() +
+                                    "origW:" + expansionParams.getOrigWeight() +
                                     ",expDocs:" + expansionParams.getNumDocs() +
                                     ",expTerms:" + expansionParams.getNumTerms() +
                                     ",fbOrigWeight:" + fbOrigWeight +
