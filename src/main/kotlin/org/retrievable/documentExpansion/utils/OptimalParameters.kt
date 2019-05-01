@@ -3,6 +3,7 @@ package org.retrievable.documentExpansion.utils
 import java.io.File
 import java.io.FileNotFoundException
 import java.util.*
+import kotlin.NoSuchElementException
 
 
 class OptimalParameters(private val paramsFile: File, private val queryName: String) {
@@ -11,11 +12,13 @@ class OptimalParameters(private val paramsFile: File, private val queryName: Str
     private val EXPANSION_WEIGHT = "expW"
     private val EXPANSION_DOCS = "expDocs"
     private val EXPANSION_TERMS = "expTerms"
+    private val VECTOR_SIZE = "v"
 
     var origWeight = 1.0
     var expWeights = listOf(0.0)
     var numDocs = 5
     var numTerms = 5
+    var vecSize = 10
 
     init {
         readOptimalParameters()
@@ -36,6 +39,9 @@ class OptimalParameters(private val paramsFile: File, private val queryName: Str
                     numDocs = paramKeyVals.first { it.startsWith(EXPANSION_DOCS) }.split(":").last().toInt()
                     numTerms = paramKeyVals.first { it.startsWith(EXPANSION_TERMS) }.split(":").last().toInt()
                     expWeights = paramKeyVals.asSequence().filter { it.startsWith(EXPANSION_WEIGHT) }.map { it.split(":").last().toDouble() }.toList()
+                    try {
+                        vecSize = paramKeyVals.first { it.startsWith(VECTOR_SIZE) }.split(":").last().toInt()
+                    } catch (e: NoSuchElementException) {}
                     break
                 }
             }

@@ -64,12 +64,12 @@ public class RunExpandedRetrievalWithGivenExpansionDocs {
         int maxNumDocs = Integer.parseInt(config.getString("max-docs", "25"));
         int numDocsInterval = Integer.parseInt(config.getString("docs-interval", "5"));
 
-        Map<Integer, SearchHits> expansionDocs = new HashMap<>();
+        Map<String, SearchHits> expansionDocs = new HashMap<>();
         try {
             Reader in = new FileReader(expansionDocsFile);
             for (CSVRecord record : CSVFormat.EXCEL.parse(in)) {
                 String origDocno = record.get(0);
-                int origDocID = targetIndex.getDocId(origDocno);
+                //int origDocID = targetIndex.getDocId(origDocno);
                 String relatedDocno = record.get(1);
                 double cosine = Double.parseDouble(record.get(2));
 
@@ -79,10 +79,10 @@ public class RunExpandedRetrievalWithGivenExpansionDocs {
 
                 //System.out.println(expHit.getDocno() + ", " + expHit.getDocID());
 
-                if (!expansionDocs.containsKey(origDocID)) {
-                    expansionDocs.put(origDocID, new SearchHits());
+                if (!expansionDocs.containsKey(origDocno)) {
+                    expansionDocs.put(origDocno, new SearchHits());
                 }
-                expansionDocs.get(origDocID).add(expHit);
+                expansionDocs.get(origDocno).add(expHit);
             }
         } catch (FileNotFoundException e) {
             System.out.println("Couldn't open file: " + expansionDocsFile);

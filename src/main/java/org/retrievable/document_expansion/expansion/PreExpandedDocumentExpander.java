@@ -11,9 +11,9 @@ import edu.gslis.searchhits.SearchHits;
 
 public class PreExpandedDocumentExpander extends DocumentExpander {
 	
-	private Map<Integer, SearchHits> preExpandedDocs;
+	private Map<String, SearchHits> preExpandedDocs;
 
-	public PreExpandedDocumentExpander(IndexWrapper index, int numTerms, Stopper stopper, Map<Integer, SearchHits> preExpandedDocs) {
+	public PreExpandedDocumentExpander(IndexWrapper index, int numTerms, Stopper stopper, Map<String, SearchHits> preExpandedDocs) {
 		super(index, numTerms, stopper);
 		this.preExpandedDocs = preExpandedDocs;
 	}
@@ -24,9 +24,9 @@ public class PreExpandedDocumentExpander extends DocumentExpander {
 			setMaxNumDocs(numDocs);
 		}
 
-		SearchHits expDocs = preExpandedDocs.get(document.getDocID());;
+		SearchHits expDocs = preExpandedDocs.get(document.getDocno());;
 		if (expDocs == null) {
-			System.err.println("No exp docs for " + document.getDocID());
+			System.err.println("No exp docs for " + document.getDocno());
 			return new SearchHits();
 		}
 		expDocs.crop(numDocs);
