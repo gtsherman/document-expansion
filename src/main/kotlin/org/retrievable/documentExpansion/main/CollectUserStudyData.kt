@@ -14,7 +14,7 @@ import org.apache.commons.lang.StringUtils
 import org.retrievable.documentExpansion.data.sampleDocuments
 import org.retrievable.documentExpansion.data.sampleTerms
 import org.retrievable.document_expansion.expansion.DocumentExpander
-import java.io.File
+import java.util.*
 
 
 fun main(args: Array<String>) {
@@ -112,7 +112,7 @@ fun main(args: Array<String>) {
         sampledTerms.addAll(sampleTerms(10, targetExpansionRM1, stopper, exclude = sampledTerms))
 
         // Include query terms
-        val judgedQueries = queries.filter { query -> qrels.contains(query.title, doc.docno) }
+        val judgedQueries = queries.filter { query -> qrels.contains(doc.docno, query.title) }
         judgedQueries.forEach { query ->
             query.applyStopper(stopper)
             removeNumbers(query.featureVector)
