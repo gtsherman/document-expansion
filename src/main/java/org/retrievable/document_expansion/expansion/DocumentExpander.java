@@ -28,6 +28,15 @@ public class DocumentExpander {
 						}
 					});
 
+	private LoadingCache<SearchHit, GQuery> pseudoQueries = CacheBuilder.newBuilder()
+			.maximumSize(10)
+			.build(
+					new CacheLoader<SearchHit, GQuery>() {
+						public GQuery load(SearchHit document) {
+                            return createDocumentPseudoQuery(document);
+						}
+					});
+
 	public DocumentExpander(IndexWrapper index) {
 		this(index, null);
 	}
@@ -56,6 +65,18 @@ public class DocumentExpander {
 
 	public void setMaxNumDocs(int maxNumDocs) {
 		this.maxNumDocs = maxNumDocs;
+	}
+
+	public GQuery getPseudoQuery(SearchHit document) {
+		GQuery pseudoQuery;
+		try {
+			pseudoQuery = pseudoQueries.get(document);
+		} catch (ExecutionException e) {
+			System.err.println("Error getting pseudo-query for document " + document.getDocno() + " from cache. Creating fresh.");
+			e.printStackTrace(System.err);
+			pseudoQuery = createDocumentPseudoQuery(document);
+		}
+		return pseudoQuery;
 	}
 	
 	public SearchHits expandDocument(SearchHit document) {
@@ -90,7 +111,7 @@ public class DocumentExpander {
 	}
 
 	public SearchHits expandDocumentByRetrieval(SearchHit document, int numDocs) {
-		GQuery pseudoQuery = createDocumentPseudoQuery(document);
+		GQuery pseudoQuery = this.getPseudoQuery(document);
 
 		SearchHits expansionDocs = index.runQuery(pseudoQuery, numDocs);
 
