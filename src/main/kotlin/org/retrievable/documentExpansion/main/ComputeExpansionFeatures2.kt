@@ -87,7 +87,8 @@ fun avgIDF(query: GQuery, index: IndexWrapper) : Double {
 fun main(args: Array<String>) {
     val config = PropertiesConfiguration(args[0])
     val queryTarget = args[1]
-    val runs = args.slice(2 until args.size)
+    val have = args[2]
+    val runs = args.slice(3 until args.size)
 
     val targetIndex = IndexWrapperIndriImpl(config.getString("target-index"))
     val expansionIndexNames = config.getStringArray("expansion-index")
@@ -99,15 +100,22 @@ fun main(args: Array<String>) {
     val query = queries.first { it.title == queryTarget }
     query.applyStopper(stopper)
 
+    val haveDocSet = HashSet<String>()
+    File(have).readLines().forEach { line ->
+        val parts = line.split(",")
+        val docno = parts[1]
+        haveDocSet.add(docno)
+    }
+
     val docSet = HashSet<String>()
     runs.forEach { file ->
         val lines = File(file).readLines()
         lines.forEach { line ->
             val parts = line.split(" ")
             val queryTitle = parts[0]
-            val rank = Integer.parseInt(parts[3])
-            if (queryTitle == query.title && rank <= 200) {
-                val doc = parts[2]
+            //val rank = Integer.parseInt(parts[3])
+            val doc = parts[2]
+            if (queryTitle == query.title && !haveDocSet.contains(doc)) {
                 docSet.add(doc)
             }
         }
